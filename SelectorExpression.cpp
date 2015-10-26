@@ -770,13 +770,12 @@ unique_ptr<ValueExpression> selectorExpression(Tokeniser& tokeniser)
 
 unique_ptr<ValueExpression> orExpression(Tokeniser& tokeniser)
 {
-    unique_ptr<ValueExpression> e(andExpression(tokeniser));
+    auto e = andExpression(tokeniser);
     if (!e) return nullptr;
     while ( tokeniser.nextToken().type==T_OR ) {
-        unique_ptr<ValueExpression> e1(std::move(e));
-        unique_ptr<ValueExpression> e2(andExpression(tokeniser));
-        if (!e2) return nullptr;
-        e = make_unique<OrExpression>(std::move(e1), std::move(e2));
+        auto e1 = andExpression(tokeniser);
+        if (!e1) return nullptr;
+        e = make_unique<OrExpression>(std::move(e), std::move(e1));
     }
     tokeniser.returnTokens();
     return e;
@@ -784,13 +783,12 @@ unique_ptr<ValueExpression> orExpression(Tokeniser& tokeniser)
 
 unique_ptr<ValueExpression> andExpression(Tokeniser& tokeniser)
 {
-    unique_ptr<ValueExpression> e(comparisonExpression(tokeniser));
+    auto e = comparisonExpression(tokeniser);
     if (!e) return nullptr;
     while ( tokeniser.nextToken().type==T_AND ) {
-        unique_ptr<ValueExpression> e1(e.release());
-        unique_ptr<ValueExpression> e2(comparisonExpression(tokeniser));
-        if (!e2) return nullptr;
-        e = make_unique<AndExpression>(std::move(e1), std::move(e2));
+        auto e1 = comparisonExpression(tokeniser);
+        if (!e1) return nullptr;
+        e = make_unique<AndExpression>(std::move(e), std::move(e1));
     }
     tokeniser.returnTokens();
     return e;
@@ -827,13 +825,13 @@ unique_ptr<BoolExpression> specialComparisons(Tokeniser& tokeniser, unique_ptr<V
         else return l;
     }
     case T_BETWEEN: {
-        unique_ptr<ValueExpression> lower(addExpression(tokeniser));
+        auto lower = addExpression(tokeniser);
         if ( !lower ) return nullptr;
         if ( tokeniser.nextToken().type!=T_AND ) {
             error = "expected AND after BETWEEN";
             return nullptr;
         }
-        unique_ptr<ValueExpression> upper(addExpression(tokeniser));
+        auto upper = addExpression(tokeniser);
         if ( !upper ) return nullptr;
         auto b = make_unique<BetweenExpression>(std::move(e1), std::move(lower), std::move(upper));
         if (negated) return make_unique<UnaryBooleanExpression>(&notOp, std::move(b));
@@ -846,7 +844,7 @@ unique_ptr<BoolExpression> specialComparisons(Tokeniser& tokeniser, unique_ptr<V
         }
         vector<unique_ptr<ValueExpression>> list;
         do {
-            unique_ptr<ValueExpression> e(addExpression(tokeniser));
+            auto e = addExpression(tokeniser);
             if (!e) return nullptr;
             list.push_back(std::move(e));
         } while (tokeniser.nextToken().type==T_COMMA);
@@ -868,13 +866,13 @@ unique_ptr<ValueExpression> comparisonExpression(Tokeniser& tokeniser)
 {
     const Token t = tokeniser.nextToken();
     if ( t.type==T_NOT ) {
-        unique_ptr<ValueExpression> e(comparisonExpression(tokeniser));
+        auto e = comparisonExpression(tokeniser);
         if (!e) return nullptr;
         return make_unique<UnaryBooleanExpression>(&notOp, std::move(e));
     }
 
     tokeniser.returnTokens();
-    unique_ptr<ValueExpression> e1(addExpression(tokeniser));
+    auto e1 = addExpression(tokeniser);
     if (!e1) return nullptr;
 
     switch (tokeniser.nextToken().type) {
@@ -918,7 +916,7 @@ unique_ptr<ValueExpression> comparisonExpression(Tokeniser& tokeniser)
         return e1;
     }
 
-    unique_ptr<ValueExpression> e2(addExpression(tokeniser));
+    auto e2 = addExpression(tokeniser);
     if (!e2) return nullptr;
 
     return make_unique<ComparisonExpression>(op, std::move(e1), std::move(e2));
@@ -926,7 +924,7 @@ unique_ptr<ValueExpression> comparisonExpression(Tokeniser& tokeniser)
 
 unique_ptr<ValueExpression> addExpression(Tokeniser& tokeniser)
 {
-    unique_ptr<ValueExpression> e(multiplyExpression(tokeniser));
+    auto e = multiplyExpression(tokeniser);
     if (!e) return nullptr;
 
     Token t = tokeniser.nextToken();
@@ -939,10 +937,9 @@ unique_ptr<ValueExpression> addExpression(Tokeniser& tokeniser)
             error = "internal error processing binary + or -";
             return nullptr;
         }
-        unique_ptr<ValueExpression> e1(std::move(e));
-        unique_ptr<ValueExpression> e2(multiplyExpression(tokeniser));
-        if (!e2) return nullptr;
-        e = make_unique<ArithmeticExpression>(op, std::move(e1), std::move(e2));
+        auto e1 = multiplyExpression(tokeniser);
+        if (!e1) return nullptr;
+        e = make_unique<ArithmeticExpression>(op, std::move(e), std::move(e1));
         t = tokeniser.nextToken();
     }
 
@@ -952,7 +949,7 @@ unique_ptr<ValueExpression> addExpression(Tokeniser& tokeniser)
 
 unique_ptr<ValueExpression> multiplyExpression(Tokeniser& tokeniser)
 {
-    unique_ptr<ValueExpression> e(unaryArithExpression(tokeniser));
+    auto e = unaryArithExpression(tokeniser);
     if (!e) return nullptr;
 
     Token t = tokeniser.nextToken();
@@ -965,10 +962,9 @@ unique_ptr<ValueExpression> multiplyExpression(Tokeniser& tokeniser)
             error = "internal error processing * or /";
             return nullptr;
         }
-        unique_ptr<ValueExpression> e1(std::move(e));
-        unique_ptr<ValueExpression> e2(unaryArithExpression(tokeniser));
-        if (!e2) return nullptr;
-        e = make_unique<ArithmeticExpression>(op, std::move(e1), std::move(e2));
+        auto e1 = unaryArithExpression(tokeniser);
+        if (!e1) return nullptr;
+        e = make_unique<ArithmeticExpression>(op, std::move(e), std::move(e1));
         t = tokeniser.nextToken();
     }
 
@@ -981,7 +977,7 @@ unique_ptr<ValueExpression> unaryArithExpression(Tokeniser& tokeniser)
     const Token t = tokeniser.nextToken();
     switch (t.type) {
     case T_LPAREN: {
-        unique_ptr<ValueExpression> e(orExpression(tokeniser));
+        auto e = orExpression(tokeniser);
         if (!e) return nullptr;
         if ( tokeniser.nextToken().type!=T_RPAREN ) {
             error = "missing ')' after '('";
@@ -995,11 +991,11 @@ unique_ptr<ValueExpression> unaryArithExpression(Tokeniser& tokeniser)
         const Token t = tokeniser.nextToken();
         // Special case for negative numerics
         if (t.type==T_NUMERIC_EXACT) {
-            unique_ptr<ValueExpression> e(parseExactNumeric(t, true));
+            auto e = parseExactNumeric(t, true);
             return e;
         } else {
             tokeniser.returnTokens();
-            unique_ptr<ValueExpression> e(unaryArithExpression(tokeniser));
+            auto e = unaryArithExpression(tokeniser);
             if (!e) return nullptr;
             return make_unique<UnaryArithExpression>(&negate, std::move(e));
         }
