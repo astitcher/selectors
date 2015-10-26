@@ -27,7 +27,7 @@
 
 #include <cstdint>
 #include <cstdlib>
-//#include <cerrno>
+#include <cerrno> // Need to use errno in checking return from strtoull()/strtod()
 #include <memory>
 #include <ostream>
 #include <regex>
@@ -302,18 +302,18 @@ class LikeExpression : public BoolExpression {
         }
         // Translate % -> .*, _ -> ., . ->\. *->\*
         bool doEscape = false;
-        for (string::const_iterator i = s.begin(); i!=s.end(); ++i) {
-            if ( e!=0 && *i==e ) {
+        for (auto& i : s) {
+            if ( e!=0 && i==e ) {
                 doEscape = true;
                 continue;
             }
-            switch(*i) {
+            switch(i) {
                 case '%':
-                    if (doEscape) regex += *i;
+                    if (doEscape) regex += i;
                     else regex += ".*";
                     break;
                 case '_':
-                    if (doEscape) regex += *i;
+                    if (doEscape) regex += i;
                     else regex += ".";
                     break;
                 case ']':
@@ -333,7 +333,7 @@ class LikeExpression : public BoolExpression {
                     regex += "\\";
                     // Fallthrough
                 default:
-                    regex += *i;
+                    regex += i;
                     break;
             }
             doEscape = false;
@@ -407,8 +407,8 @@ public:
         Value ve(e->eval(env));
         if (unknown(ve)) return BN_UNKNOWN;
         BoolOrNone r = BN_FALSE;
-        for (std::size_t i = 0; i<l.size(); ++i){
-            Value li(l[i]->eval(env));
+        for (auto& le : l){
+            Value li(le->eval(env));
             if (unknown(li)) {
                 r = BN_UNKNOWN;
                 continue;
@@ -441,8 +441,8 @@ public:
         Value ve(e->eval(env));
         if (unknown(ve)) return BN_UNKNOWN;
         BoolOrNone r = BN_TRUE;
-        for (std::size_t i = 0; i<l.size(); ++i){
-            Value li(l[i]->eval(env));
+        for (auto& le : l){
+            Value li(le->eval(env));
             if (unknown(li)) {
                 r = BN_UNKNOWN;
                 continue;
