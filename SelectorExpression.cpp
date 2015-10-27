@@ -1006,8 +1006,7 @@ unique_ptr<ValueExpression> unaryArithExpression(Tokeniser& tokeniser)
         const Token t = tokeniser.nextToken();
         // Special case for negative numerics
         if (t.type==T_NUMERIC_EXACT) {
-            auto e = parseExactNumeric(t, true);
-            return e;
+            return parseExactNumeric(t, true);
         } else {
             tokeniser.returnTokens();
             auto e = unaryArithExpression(tokeniser);
