@@ -24,6 +24,7 @@
 #include "SelectorToken.h"
 #include "SelectorValue.h"
 
+#include <sstream>
 #include <string>
 #include <map>
 #include <memory>
@@ -31,6 +32,7 @@
 #define BOOST_TEST_MAIN
 #include <boost/test/included/unit_test.hpp>
 
+using std::ostringstream;
 using std::string;
 using std::make_unique;
 using std::map;
@@ -261,19 +263,20 @@ BOOST_AUTO_TEST_CASE(tokenString)
 
 unique_ptr<Expression> test_selector(const string& s)
 {
-  std::cerr << "String: " << s << " -> " << std::endl;
+  BOOST_MESSAGE("String: " << s << " -> ");
   try {
     auto e = make_selector(s);
     if (e) {
-        std::cerr << "  Parse: ";
-        e->repr(std::cerr);
-        std::cerr << std::endl;
+        ostringstream o("  Parse: ");
+        e->repr(o);
+        o << std::ends;
+        BOOST_MESSAGE(o.str());
     } else {
-        std::cerr << "  Null" << std::endl;
+        BOOST_MESSAGE("  Null");
     }
     return e;
   } catch (std::exception& e) {
-    std::cerr << "  Exception: " << e.what() << std::endl;
+    BOOST_MESSAGE("  Exception: " << e.what());
     throw;
   }
 }
@@ -345,7 +348,7 @@ class TestSelectorEnv : public Env {
 
     const selector::Value& value(const string& v) const {
         const selector::Value& r = values.find(v)!=values.end() ? values[v] : EMPTY;
-        std::cerr << "Lookup: " << v << " -> " << r << std::endl;
+        BOOST_MESSAGE("  Lookup: " << v << " -> " << r);
         return r;
     }
 
