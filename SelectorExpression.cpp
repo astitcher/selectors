@@ -32,11 +32,13 @@
 #include <ostream>
 #include <regex>
 #include <string>
+#include <sstream>
 #include <vector>
 
 using std::make_unique;
 using std::ostream;
 using std::string;
+using std::ostringstream;
 using std::unique_ptr;
 using std::vector;
 
@@ -317,10 +319,17 @@ class LikeExpression : public BoolExpression {
                     else regex += ".";
                     break;
                 case ']':
-                    regex += "[]]";
-                    break;
+                case '{':
+                case '}':
+                case '(':
+                case ')':
                 case '-':
-                    regex += "[-]";
+                case '+':
+                case '?':
+                case '|':
+                    regex += '[';
+                    regex += i;
+                    regex += ']';
                     break;
                 // Don't add any more cases here: these are sufficient,
                 // adding more might turn on inadvertent matching
@@ -343,11 +352,17 @@ class LikeExpression : public BoolExpression {
     }
 
 public:
-    LikeExpression(unique_ptr<ValueExpression> e_, const string& like, const string& escape="") :
+    LikeExpression(unique_ptr<ValueExpression> e_, const string& like, const string& escape="")
+    try :
         e(std::move(e_)),
         reString(toRegex(like, escape)),
-        regexBuffer(reString)
+        regexBuffer(reString, std::regex::basic)
     {}
+    catch (std::regex_error& e) {
+        ostringstream o("Regex Internal error: code=");
+        o << e.code() << std::ends;
+        throw std::logic_error(o.str());
+    }
 
     void repr(ostream& os) const {
         os << *e << " REGEX_MATCH '" << reString << "'";
@@ -1099,14 +1114,14 @@ unique_ptr<Expression> make_selector(const string& exp)
     string::const_iterator e = exp.end();
     Tokeniser tokeniser(s,e);
     Parse parse;
-    auto b = make_unique<ConcreteExpression>(parse.selectorExpression(tokeniser));
-    if (!b) {
+    auto p = parse.selectorExpression(tokeniser);
+    if (!p) {
         throwParseError(tokeniser, parse.error);
     }
     if (tokeniser.nextToken().type != T_EOS) {
         throwParseError(tokeniser, "extra input");
     }
-    return b;
+    return make_unique<ConcreteExpression>(std::move(p));;
 }
 
 }

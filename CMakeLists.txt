@@ -18,3 +18,6 @@
 #
 
 add_library(selectors SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp)
+
+add_executable(selector_tests SelectorTests.cpp)
+target_link_libraries(selector_tests selectors)
