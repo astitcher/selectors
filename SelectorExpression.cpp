@@ -1107,7 +1107,6 @@ public:
     {}
 };
 
-
 unique_ptr<Expression> make_selector(const string& exp)
 {
     string::const_iterator s = exp.begin();
@@ -1122,6 +1121,17 @@ unique_ptr<Expression> make_selector(const string& exp)
         throwParseError(tokeniser, "extra input");
     }
     return make_unique<ConcreteExpression>(std::move(p));;
+}
+
+bool eval(const Expression& exp, const Env& env)
+{
+    return exp.eval(env);
+}
+
+std::ostream& operator<<(std::ostream& o, const Expression& e)
+{
+    e.repr(o);
+    return o;
 }
 
 }

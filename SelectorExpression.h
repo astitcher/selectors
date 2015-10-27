@@ -38,7 +38,8 @@ public:
 };
 
 std::unique_ptr<Expression> make_selector(const std::string& exp);
-
+bool eval(const Expression&, const Env&);
+std::ostream& operator<<(std::ostream&, const Expression&);
 }
 
 #endif
