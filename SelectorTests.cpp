@@ -24,7 +24,6 @@
 #include "SelectorToken.h"
 #include "SelectorValue.h"
 
-#include <sstream>
 #include <string>
 #include <map>
 #include <memory>
@@ -32,7 +31,6 @@
 #define BOOST_TEST_MAIN
 #include <boost/test/included/unit_test.hpp>
 
-using std::ostringstream;
 using std::string;
 using std::make_unique;
 using std::map;
@@ -267,17 +265,14 @@ unique_ptr<Expression> test_selector(const string& s)
   try {
     auto e = make_selector(s);
     if (e) {
-        ostringstream o("  Parse: ");
-        e->repr(o);
-        o << std::ends;
-        BOOST_MESSAGE(o.str());
+        BOOST_MESSAGE("  Parse: " << *e);
     } else {
         BOOST_MESSAGE("  Null");
     }
     return e;
   } catch (std::exception& e) {
-    BOOST_MESSAGE("  Exception: " << e.what());
-    throw;
+      BOOST_MESSAGE("  Exception: " << e.what());
+      throw;
   }
 }
 
@@ -368,6 +363,12 @@ public:
     }
 };
 
+bool eval_selector(const string& s, const TestSelectorEnv& e)
+{
+    auto exp = test_selector(s);
+    return eval(*exp, e);
+}
+
 const selector::Value TestSelectorEnv::EMPTY;
 
 BOOST_AUTO_TEST_CASE(simpleEval)
@@ -376,38 +377,38 @@ BOOST_AUTO_TEST_CASE(simpleEval)
     env.set("A", "Bye, bye cruel world");
     env.set("B", "hello kitty");
 
-    BOOST_CHECK(test_selector("")->eval(env));
-    BOOST_CHECK(test_selector(" ")->eval(env));
-    BOOST_CHECK(test_selector("A is not null")->eval(env));
-    BOOST_CHECK(!test_selector("A is null")->eval(env));
-    BOOST_CHECK(!test_selector("A = C")->eval(env));
-    BOOST_CHECK(!test_selector("A <> C")->eval(env));
-    BOOST_CHECK(!test_selector("C is not null")->eval(env));
-    BOOST_CHECK(test_selector("C is null")->eval(env));
-    BOOST_CHECK(test_selector("A='Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(!test_selector("A<>'Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(!test_selector("A='hello kitty'")->eval(env));
-    BOOST_CHECK(test_selector("A<>'hello kitty'")->eval(env));
-    BOOST_CHECK(!test_selector("A=B")->eval(env));
-    BOOST_CHECK(test_selector("A<>B")->eval(env));
-    BOOST_CHECK(!test_selector("A='hello kitty' OR B='Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(test_selector("B='hello kitty' OR A='Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(test_selector("B='hello kitty' AnD A='Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(!test_selector("B='hello kitty' AnD B='Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(test_selector("A is null or A='Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(test_selector("Z is null OR A is not null and A<>'Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(!test_selector("(Z is null OR A is not null) and A<>'Bye, bye cruel world'")->eval(env));
-    BOOST_CHECK(test_selector("NOT C is not null OR C is null")->eval(env));
-    BOOST_CHECK(test_selector("Not A='' or B=z")->eval(env));
-    BOOST_CHECK(test_selector("Not A=17 or B=5.6")->eval(env));
-    BOOST_CHECK(!test_selector("A<>17 and B=5.6e17")->eval(env));
-    BOOST_CHECK(!test_selector("C=D")->eval(env));
-    BOOST_CHECK(test_selector("13 is not null")->eval(env));
-    BOOST_CHECK(!test_selector("'boo!' is null")->eval(env));
-    BOOST_CHECK(test_selector("A LIKE '%cru_l%'")->eval(env));
-    BOOST_CHECK(test_selector("'_%%_hello.th_re%' LIKE 'z_%.%z_%z%' escape 'z'")->eval(env));
-    BOOST_CHECK(test_selector("A NOT LIKE 'z_%.%z_%z%' escape 'z'")->eval(env));
-    BOOST_CHECK(test_selector("'{}[]<>,.!\"$%^&*()_-+=?/|\\' LIKE '{}[]<>,.!\"$z%^&*()z_-+=?/|\\' escape 'z'")->eval(env));
+    BOOST_CHECK(eval_selector("", env));
+    BOOST_CHECK(eval_selector(" ", env));
+    BOOST_CHECK(eval_selector("A is not null", env));
+    BOOST_CHECK(!eval_selector("A is null", env));
+    BOOST_CHECK(!eval_selector("A = C", env));
+    BOOST_CHECK(!eval_selector("A <> C", env));
+    BOOST_CHECK(!eval_selector("C is not null", env));
+    BOOST_CHECK(eval_selector("C is null", env));
+    BOOST_CHECK(eval_selector("A='Bye, bye cruel world'", env));
+    BOOST_CHECK(!eval_selector("A<>'Bye, bye cruel world'", env));
+    BOOST_CHECK(!eval_selector("A='hello kitty'", env));
+    BOOST_CHECK(eval_selector("A<>'hello kitty'", env));
+    BOOST_CHECK(!eval_selector("A=B", env));
+    BOOST_CHECK(eval_selector("A<>B", env));
+    BOOST_CHECK(!eval_selector("A='hello kitty' OR B='Bye, bye cruel world'", env));
+    BOOST_CHECK(eval_selector("B='hello kitty' OR A='Bye, bye cruel world'", env));
+    BOOST_CHECK(eval_selector("B='hello kitty' AnD A='Bye, bye cruel world'", env));
+    BOOST_CHECK(!eval_selector("B='hello kitty' AnD B='Bye, bye cruel world'", env));
+    BOOST_CHECK(eval_selector("A is null or A='Bye, bye cruel world'", env));
+    BOOST_CHECK(eval_selector("Z is null OR A is not null and A<>'Bye, bye cruel world'", env));
+    BOOST_CHECK(!eval_selector("(Z is null OR A is not null) and A<>'Bye, bye cruel world'", env));
+    BOOST_CHECK(eval_selector("NOT C is not null OR C is null", env));
+    BOOST_CHECK(eval_selector("Not A='' or B=z", env));
+    BOOST_CHECK(eval_selector("Not A=17 or B=5.6", env));
+    BOOST_CHECK(!eval_selector("A<>17 and B=5.6e17", env));
+    BOOST_CHECK(!eval_selector("C=D", env));
+    BOOST_CHECK(eval_selector("13 is not null", env));
+    BOOST_CHECK(!eval_selector("'boo!' is null", env));
+    BOOST_CHECK(eval_selector("A LIKE '%cru_l%'", env));
+    BOOST_CHECK(eval_selector("'_%%_hello.th_re%' LIKE 'z_%.%z_%z%' escape 'z'", env));
+    BOOST_CHECK(eval_selector("A NOT LIKE 'z_%.%z_%z%' escape 'z'", env));
+    BOOST_CHECK(eval_selector("'{}[]<>,.!\"$%^&*()_-+=?/|\\' LIKE '{}[]<>,.!\"$z%^&*()z_-+=?/|\\' escape 'z'", env));
 }
 
 BOOST_AUTO_TEST_CASE(numericEval)
@@ -416,104 +417,104 @@ BOOST_AUTO_TEST_CASE(numericEval)
     env.set("A", 42.0);
     env.set("B", 39);
 
-    BOOST_CHECK(test_selector("A>B")->eval(env));
-    BOOST_CHECK(test_selector("A=42")->eval(env));
-    BOOST_CHECK(test_selector("B=39.0")->eval(env));
-    BOOST_CHECK(test_selector("Not A=17 or B=5.6")->eval(env));
-    BOOST_CHECK(!test_selector("A<>17 and B=5.6e17")->eval(env));
-    BOOST_CHECK(test_selector("3 BETWEEN -17 and 98.5")->eval(env));
-    BOOST_CHECK(test_selector("A BETWEEN B and 98.5")->eval(env));
-    BOOST_CHECK(!test_selector("B NOT BETWEEN 35 AND 100")->eval(env));
-    BOOST_CHECK(!test_selector("A BETWEEN B and 40")->eval(env));
-    BOOST_CHECK(!test_selector("A BETWEEN C and 40")->eval(env));
-    BOOST_CHECK(!test_selector("A BETWEEN 45 and C")->eval(env));
-    BOOST_CHECK(test_selector("(A BETWEEN 40 and C) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(A BETWEEN C and 45) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("17/4=4")->eval(env));
-    BOOST_CHECK(!test_selector("A/0=0")->eval(env));
-    BOOST_CHECK(test_selector("A*B+19<A*(B+19)")->eval(env));
-    BOOST_CHECK(test_selector("-A=0-A")->eval(env));
+    BOOST_CHECK(eval_selector("A>B", env));
+    BOOST_CHECK(eval_selector("A=42", env));
+    BOOST_CHECK(eval_selector("B=39.0", env));
+    BOOST_CHECK(eval_selector("Not A=17 or B=5.6", env));
+    BOOST_CHECK(!eval_selector("A<>17 and B=5.6e17", env));
+    BOOST_CHECK(eval_selector("3 BETWEEN -17 and 98.5", env));
+    BOOST_CHECK(eval_selector("A BETWEEN B and 98.5", env));
+    BOOST_CHECK(!eval_selector("B NOT BETWEEN 35 AND 100", env));
+    BOOST_CHECK(!eval_selector("A BETWEEN B and 40", env));
+    BOOST_CHECK(!eval_selector("A BETWEEN C and 40", env));
+    BOOST_CHECK(!eval_selector("A BETWEEN 45 and C", env));
+    BOOST_CHECK(eval_selector("(A BETWEEN 40 and C) IS NULL", env));
+    BOOST_CHECK(eval_selector("(A BETWEEN C and 45) IS NULL", env));
+    BOOST_CHECK(eval_selector("17/4=4", env));
+    BOOST_CHECK(!eval_selector("A/0=0", env));
+    BOOST_CHECK(eval_selector("A*B+19<A*(B+19)", env));
+    BOOST_CHECK(eval_selector("-A=0-A", env));
 }
 
 BOOST_AUTO_TEST_CASE(numericLiterals)
 {
     TestSelectorEnv env;
 
-    BOOST_CHECK(test_selector(" 9223372036854775807>0")->eval(env));
-    BOOST_CHECK(test_selector("-9223372036854775807<0")->eval(env));
-    BOOST_CHECK_THROW(test_selector(" 9223372036854775808>0")->eval(env), std::range_error);
-    BOOST_CHECK(test_selector("0x8000_0000_0000_0001=-9223372036854775807")->eval(env));
-    BOOST_CHECK_THROW(test_selector("-9223372036854775809<0")->eval(env), std::range_error);
-    BOOST_CHECK(test_selector(" 9223372036854775807L<>0")->eval(env));
-    BOOST_CHECK(test_selector("-9223372036854775807L<>0")->eval(env));
-    BOOST_CHECK(test_selector("-9223372036854775808<>0")->eval(env));
-    BOOST_CHECK(test_selector("-9223372036854775808=0x8000_0000_0000_0000")->eval(env));
-    BOOST_CHECK(test_selector("0x8000_0000_0000_0000<9223372036854775807")->eval(env));
-    BOOST_CHECK(test_selector(" 0.4f>0.3d")->eval(env));
-    BOOST_CHECK(test_selector(" 1000_020.4f>0.3d")->eval(env));
-    BOOST_CHECK(test_selector(" 1000_020.4f>0x800p-3")->eval(env));
-    BOOST_CHECK(test_selector(" 0x1000_0000=0x1000_0000p0")->eval(env));
-    BOOST_CHECK(test_selector(" 0xFF=255L")->eval(env));
-    BOOST_CHECK(test_selector(" 077L=0b111_111")->eval(env));
-    BOOST_CHECK(test_selector(" 077L=63")->eval(env));
+    BOOST_CHECK(eval_selector(" 9223372036854775807>0", env));
+    BOOST_CHECK(eval_selector("-9223372036854775807<0", env));
+    BOOST_CHECK_THROW(eval_selector(" 9223372036854775808>0", env), std::range_error);
+    BOOST_CHECK(eval_selector("0x8000_0000_0000_0001=-9223372036854775807", env));
+    BOOST_CHECK_THROW(eval_selector("-9223372036854775809<0", env), std::range_error);
+    BOOST_CHECK(eval_selector(" 9223372036854775807L<>0", env));
+    BOOST_CHECK(eval_selector("-9223372036854775807L<>0", env));
+    BOOST_CHECK(eval_selector("-9223372036854775808<>0", env));
+    BOOST_CHECK(eval_selector("-9223372036854775808=0x8000_0000_0000_0000", env));
+    BOOST_CHECK(eval_selector("0x8000_0000_0000_0000<9223372036854775807", env));
+    BOOST_CHECK(eval_selector(" 0.4f>0.3d", env));
+    BOOST_CHECK(eval_selector(" 1000_020.4f>0.3d", env));
+    BOOST_CHECK(eval_selector(" 1000_020.4f>0x800p-3", env));
+    BOOST_CHECK(eval_selector(" 0x1000_0000=0x1000_0000p0", env));
+    BOOST_CHECK(eval_selector(" 0xFF=255L", env));
+    BOOST_CHECK(eval_selector(" 077L=0b111_111", env));
+    BOOST_CHECK(eval_selector(" 077L=63", env));
 }
 
 BOOST_AUTO_TEST_CASE(comparisonEval)
 {
     TestSelectorEnv env;
 
-    BOOST_CHECK(!test_selector("17 > 19.0")->eval(env));
-    BOOST_CHECK(!test_selector("'hello' > 19.0")->eval(env));
-    BOOST_CHECK(!test_selector("'hello' < 19.0")->eval(env));
-    BOOST_CHECK(!test_selector("'hello' = 19.0")->eval(env));
-    BOOST_CHECK(!test_selector("'hello'>42 and 'hello'<42 and 'hello'=42 and 'hello'<>42")->eval(env));
-    BOOST_CHECK(test_selector("20 >= 19.0 and 20 > 19")->eval(env));
-    BOOST_CHECK(test_selector("42 <= 42.0 and 37.0 >= 37")->eval(env));
-    BOOST_CHECK(test_selector("(A IN ('hello', 'there', 1 , true, (1-17))) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(-16 IN ('hello', A, 'there', true)) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(-16 NOT IN ('hello', 'there', A, true)) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(-16 IN ('hello', 'there', true)) IS NOT NULL")->eval(env));
-    BOOST_CHECK(!test_selector("-16 IN ('hello', 'there', true)")->eval(env));
-    BOOST_CHECK(test_selector("(-16 NOT IN ('hello', 'there', true)) IS NOT NULL")->eval(env));
-    BOOST_CHECK(!test_selector("-16 NOT IN ('hello', 'there', true)")->eval(env));
-    BOOST_CHECK(test_selector("(-16 NOT IN ('hello', 'there', A, 1 , true)) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("'hello' IN ('hello', 'there', 1 , true, (1-17))")->eval(env));
-    BOOST_CHECK(test_selector("TRUE IN ('hello', 'there', 1 , true, (1-17))")->eval(env));
-    BOOST_CHECK(test_selector("-16 IN ('hello', 'there', 1 , true, (1-17))")->eval(env));
-    BOOST_CHECK(!test_selector("-16 NOT IN ('hello', 'there', 1 , true, (1-17))")->eval(env));
-    BOOST_CHECK(!test_selector("1 IN ('hello', 'there', 'polly')")->eval(env));
-    BOOST_CHECK(!test_selector("1 NOT IN ('hello', 'there', 'polly')")->eval(env));
-    BOOST_CHECK(!test_selector("'hell' IN ('hello', 'there', 1 , true, (1-17))")->eval(env));
-    BOOST_CHECK(test_selector("('hell' IN ('hello', 'there', 1 , true, (1-17), A)) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("('hell' NOT IN ('hello', 'there', 1 , true, (1-17), A)) IS NULL")->eval(env));
-    BOOST_CHECK(!test_selector("'hello kitty' BETWEEN 30 and 40")->eval(env));
-    BOOST_CHECK(test_selector("'hello kitty' NOT BETWEEN 30 and 40")->eval(env));
-    BOOST_CHECK(!test_selector("14 BETWEEN 'aardvark' and 'zebra'")->eval(env));
-    BOOST_CHECK(test_selector("14 NOT BETWEEN 'aardvark' and 'zebra'")->eval(env));
-    BOOST_CHECK(!test_selector("TRUE BETWEEN 'aardvark' and 'zebra'")->eval(env));
-    BOOST_CHECK(test_selector("TRUE NOT BETWEEN 'aardvark' and 'zebra'")->eval(env));
-    BOOST_CHECK(test_selector("(A BETWEEN 'aardvark' and 14) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(A NOT BETWEEN 'aardvark' and 14) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(14 BETWEEN A and 17) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(14 NOT BETWEEN A and 17) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(14 BETWEEN 11 and A) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("(14 NOT BETWEEN 11 and A) IS NULL")->eval(env));
-    BOOST_CHECK(test_selector("14 NOT BETWEEN 11 and 9")->eval(env));
-    BOOST_CHECK(test_selector("14 BETWEEN -11 and 54367")->eval(env));
+    BOOST_CHECK(!eval_selector("17 > 19.0", env));
+    BOOST_CHECK(!eval_selector("'hello' > 19.0", env));
+    BOOST_CHECK(!eval_selector("'hello' < 19.0", env));
+    BOOST_CHECK(!eval_selector("'hello' = 19.0", env));
+    BOOST_CHECK(!eval_selector("'hello'>42 and 'hello'<42 and 'hello'=42 and 'hello'<>42", env));
+    BOOST_CHECK(eval_selector("20 >= 19.0 and 20 > 19", env));
+    BOOST_CHECK(eval_selector("42 <= 42.0 and 37.0 >= 37", env));
+    BOOST_CHECK(eval_selector("(A IN ('hello', 'there', 1 , true, (1-17))) IS NULL", env));
+    BOOST_CHECK(eval_selector("(-16 IN ('hello', A, 'there', true)) IS NULL", env));
+    BOOST_CHECK(eval_selector("(-16 NOT IN ('hello', 'there', A, true)) IS NULL", env));
+    BOOST_CHECK(eval_selector("(-16 IN ('hello', 'there', true)) IS NOT NULL", env));
+    BOOST_CHECK(!eval_selector("-16 IN ('hello', 'there', true)", env));
+    BOOST_CHECK(eval_selector("(-16 NOT IN ('hello', 'there', true)) IS NOT NULL", env));
+    BOOST_CHECK(!eval_selector("-16 NOT IN ('hello', 'there', true)", env));
+    BOOST_CHECK(eval_selector("(-16 NOT IN ('hello', 'there', A, 1 , true)) IS NULL", env));
+    BOOST_CHECK(eval_selector("'hello' IN ('hello', 'there', 1 , true, (1-17))", env));
+    BOOST_CHECK(eval_selector("TRUE IN ('hello', 'there', 1 , true, (1-17))", env));
+    BOOST_CHECK(eval_selector("-16 IN ('hello', 'there', 1 , true, (1-17))", env));
+    BOOST_CHECK(!eval_selector("-16 NOT IN ('hello', 'there', 1 , true, (1-17))", env));
+    BOOST_CHECK(!eval_selector("1 IN ('hello', 'there', 'polly')", env));
+    BOOST_CHECK(!eval_selector("1 NOT IN ('hello', 'there', 'polly')", env));
+    BOOST_CHECK(!eval_selector("'hell' IN ('hello', 'there', 1 , true, (1-17))", env));
+    BOOST_CHECK(eval_selector("('hell' IN ('hello', 'there', 1 , true, (1-17), A)) IS NULL", env));
+    BOOST_CHECK(eval_selector("('hell' NOT IN ('hello', 'there', 1 , true, (1-17), A)) IS NULL", env));
+    BOOST_CHECK(!eval_selector("'hello kitty' BETWEEN 30 and 40", env));
+    BOOST_CHECK(eval_selector("'hello kitty' NOT BETWEEN 30 and 40", env));
+    BOOST_CHECK(!eval_selector("14 BETWEEN 'aardvark' and 'zebra'", env));
+    BOOST_CHECK(eval_selector("14 NOT BETWEEN 'aardvark' and 'zebra'", env));
+    BOOST_CHECK(!eval_selector("TRUE BETWEEN 'aardvark' and 'zebra'", env));
+    BOOST_CHECK(eval_selector("TRUE NOT BETWEEN 'aardvark' and 'zebra'", env));
+    BOOST_CHECK(eval_selector("(A BETWEEN 'aardvark' and 14) IS NULL", env));
+    BOOST_CHECK(eval_selector("(A NOT BETWEEN 'aardvark' and 14) IS NULL", env));
+    BOOST_CHECK(eval_selector("(14 BETWEEN A and 17) IS NULL", env));
+    BOOST_CHECK(eval_selector("(14 NOT BETWEEN A and 17) IS NULL", env));
+    BOOST_CHECK(eval_selector("(14 BETWEEN 11 and A) IS NULL", env));
+    BOOST_CHECK(eval_selector("(14 NOT BETWEEN 11 and A) IS NULL", env));
+    BOOST_CHECK(eval_selector("14 NOT BETWEEN 11 and 9", env));
+    BOOST_CHECK(eval_selector("14 BETWEEN -11 and 54367", env));
 }
 
 BOOST_AUTO_TEST_CASE(NullEval)
 {
     TestSelectorEnv env;
 
-    BOOST_CHECK(test_selector("P > 19.0 or (P is null)")->eval(env));
-    BOOST_CHECK(test_selector("P is null or P=''")->eval(env));
-    BOOST_CHECK(!test_selector("P=Q")->eval(env));
-    BOOST_CHECK(!test_selector("not P=Q")->eval(env));
-    BOOST_CHECK(!test_selector("not P=Q and not P=Q")->eval(env));
-    BOOST_CHECK(!test_selector("P=Q or not P=Q")->eval(env));
-    BOOST_CHECK(!test_selector("P > 19.0 or P <= 19.0")->eval(env));
-    BOOST_CHECK(test_selector("P > 19.0 or 17 <= 19.0")->eval(env));
+    BOOST_CHECK(eval_selector("P > 19.0 or (P is null)", env));
+    BOOST_CHECK(eval_selector("P is null or P=''", env));
+    BOOST_CHECK(!eval_selector("P=Q", env));
+    BOOST_CHECK(!eval_selector("not P=Q", env));
+    BOOST_CHECK(!eval_selector("not P=Q and not P=Q", env));
+    BOOST_CHECK(!eval_selector("P=Q or not P=Q", env));
+    BOOST_CHECK(!eval_selector("P > 19.0 or P <= 19.0", env));
+    BOOST_CHECK(eval_selector("P > 19.0 or 17 <= 19.0", env));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
