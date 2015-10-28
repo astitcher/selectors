@@ -807,6 +807,11 @@ static unique_ptr<ValueExpression> andExpression(Tokeniser& tokeniser)
     return e;
 }
 
+static unique_ptr<BoolExpression> conditionalNegate(bool negated, unique_ptr<BoolExpression> e)
+{
+    return negated ? make_unique<UnaryBooleanExpression>(&notOp, std::move(e)) : std::move(e);
+}
+
 static unique_ptr<BoolExpression> specialComparisons(Tokeniser& tokeniser, unique_ptr<ValueExpression> e1, bool negated = false) {
     switch (tokeniser.nextToken().type) {
     case T_LIKE: {
@@ -815,7 +820,6 @@ static unique_ptr<BoolExpression> specialComparisons(Tokeniser& tokeniser, uniqu
             throwParseError(tokeniser, "expected string after LIKE");
         }
         // Check for "ESCAPE"
-        unique_ptr<BoolExpression> l;
         if ( tokeniser.nextToken().type==T_ESCAPE ) {
             auto e = tokeniser.nextToken();
             if ( e.type!=T_STRING ) {
@@ -827,22 +831,18 @@ static unique_ptr<BoolExpression> specialComparisons(Tokeniser& tokeniser, uniqu
             if (e.val=="%" || e.val=="_") {
                 throwParseError(tokeniser, "'%' and '_' are not allowed as ESCAPE characters");
             }
-            l = make_unique<LikeExpression>(std::move(e1), t.val, e.val);
+            return conditionalNegate(negated, make_unique<LikeExpression>(std::move(e1), t.val, e.val));
         } else {
             tokeniser.returnTokens();
-            l = make_unique<LikeExpression>(std::move(e1), t.val);
+            return conditionalNegate(negated, make_unique<LikeExpression>(std::move(e1), t.val));
         }
-        if (negated) return make_unique<UnaryBooleanExpression>(&notOp, std::move(l));
-        else return l;
     }
     case T_BETWEEN: {
         auto lower = addExpression(tokeniser);
         if ( tokeniser.nextToken().type!=T_AND ) {
             throwParseError(tokeniser, "expected AND after BETWEEN");
         }
-        auto b = make_unique<BetweenExpression>(std::move(e1), std::move(lower), addExpression(tokeniser));
-        if (negated) return make_unique<UnaryBooleanExpression>(&notOp, std::move(b));
-        else return b;
+        return conditionalNegate(negated, make_unique<BetweenExpression>(std::move(e1), std::move(lower), addExpression(tokeniser)));
     }
     case T_IN: {
         if ( tokeniser.nextToken().type!=T_LPAREN ) {
