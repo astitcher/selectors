@@ -22,6 +22,8 @@
  *
  */
 
+#include "SelectorValue.h"
+
 #include <iosfwd>
 #include <memory>
 #include <string>
@@ -34,7 +36,8 @@ class Expression {
 public:
     virtual ~Expression() {};
     virtual void repr(std::ostream&) const = 0;
-    virtual bool eval(const Env&) const = 0;
+    virtual Value eval(const Env&) const = 0;
+    virtual BoolOrNone eval_bool(const Env&) const = 0;
 };
 
 std::unique_ptr<Expression> make_selector(const std::string& exp);

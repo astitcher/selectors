@@ -112,7 +112,7 @@ using std::vector;
 
 namespace selector {
 
-class ValueExpression {
+class ValueExpression : public Expression {
 public:
     virtual ~ValueExpression() {}
     virtual void repr(std::ostream&) const = 0;
@@ -1039,37 +1039,17 @@ static unique_ptr<ValueExpression> primaryExpression(Tokeniser& tokeniser)
 ///////////////////////////////////////////////////////////
 
 // Top level parser
-class ConcreteExpression : public Expression {
-    unique_ptr<ValueExpression> expression;
-
-    void repr(ostream& os) const {
-        expression->repr(os);
-    }
-
-    bool eval(const Env& env) const {
-        BoolOrNone bn = expression->eval_bool(env);
-        if (bn==BN_TRUE) return true;
-        else return false;
-    }
-
-public:
-    ConcreteExpression(unique_ptr<ValueExpression> be) :
-        expression(std::move(be))
-    {}
-};
-
 unique_ptr<Expression> make_selector(const string& exp)
 {
     auto s = exp.cbegin();
     auto e = exp.cend();
     auto tokeniser = Tokeniser{s,e};
-    auto p = Parse::selectorExpression(tokeniser);
-    return make_unique<ConcreteExpression>(std::move(p));;
+    return Parse::selectorExpression(tokeniser);
 }
 
 bool eval(const Expression& exp, const Env& env)
 {
-    return exp.eval(env);
+    return exp.eval_bool(env)==BN_TRUE;
 }
 
 std::ostream& operator<<(std::ostream& o, const Expression& e)
