@@ -175,23 +175,23 @@ public:
 // Boolean Expression types...
 
 class ComparisonExpression : public BoolExpression {
-    ComparisonOperator* op;
+    const ComparisonOperator& op;
     unique_ptr<ValueExpression> e1;
     unique_ptr<ValueExpression> e2;
 
 public:
-    ComparisonExpression(ComparisonOperator* o, unique_ptr<ValueExpression> e, unique_ptr<ValueExpression> e_):
+    ComparisonExpression(const ComparisonOperator& o, unique_ptr<ValueExpression> e, unique_ptr<ValueExpression> e_):
         op(o),
         e1(std::move(e)),
         e2(std::move(e_))
     {}
 
     void repr(ostream& os) const {
-        os << "(" << *e1 << *op << *e2 << ")";
+        os << "(" << *e1 << op << *e2 << ")";
     }
 
     BoolOrNone eval_bool(const Env& env) const {
-        return op->eval(*e1, *e2, env);
+        return op.eval(*e1, *e2, env);
     }
 };
 
@@ -244,21 +244,21 @@ public:
 };
 
 class UnaryBooleanExpression : public BoolExpression {
-    UnaryBooleanOperator* op;
+    const UnaryBooleanOperator& op;
     unique_ptr<ValueExpression> e1;
 
 public:
-    UnaryBooleanExpression(UnaryBooleanOperator* o, unique_ptr<ValueExpression> e) :
+    UnaryBooleanExpression(const UnaryBooleanOperator& o, unique_ptr<ValueExpression> e) :
         op(o),
         e1(std::move(e))
     {}
 
     void repr(ostream& os) const {
-        os << *op << "(" << *e1 << ")";
+        os << op << "(" << *e1 << ")";
     }
 
     BoolOrNone eval_bool(const Env& env) const {
-        return op->eval(*e1, env);
+        return op.eval(*e1, env);
     }
 };
 
@@ -452,42 +452,42 @@ public:
 // Arithmetic Expression types
 
 class ArithmeticExpression : public ValueExpression {
-    ArithmeticOperator* op;
+    const ArithmeticOperator& op;
     unique_ptr<ValueExpression> e1;
     unique_ptr<ValueExpression> e2;
 
 public:
-    ArithmeticExpression(ArithmeticOperator* o, unique_ptr<ValueExpression> e, unique_ptr<ValueExpression> e_):
+    ArithmeticExpression(const ArithmeticOperator& o, unique_ptr<ValueExpression> e, unique_ptr<ValueExpression> e_):
         op(o),
         e1(std::move(e)),
         e2(std::move(e_))
     {}
 
     void repr(ostream& os) const {
-        os << "(" << *e1 << *op << *e2 << ")";
+        os << "(" << *e1 << op << *e2 << ")";
     }
 
     Value eval(const Env& env) const {
-        return op->eval(*e1, *e2, env);
+        return op.eval(*e1, *e2, env);
     }
 };
 
 class UnaryArithExpression : public ValueExpression {
-    UnaryArithmeticOperator* op;
+    const UnaryArithmeticOperator& op;
     unique_ptr<ValueExpression> e1;
 
 public:
-    UnaryArithExpression(UnaryArithmeticOperator* o, unique_ptr<ValueExpression> e) :
+    UnaryArithExpression(const UnaryArithmeticOperator& o, unique_ptr<ValueExpression> e) :
         op(o),
         e1(std::move(e))
     {}
 
     void repr(ostream& os) const {
-        os << *op << "(" << *e1 << ")";
+        os << op << "(" << *e1 << ")";
     }
 
     Value eval(const Env& env) const {
-        return op->eval(*e1, env);
+        return op.eval(*e1, env);
     }
 };
 
@@ -551,7 +551,7 @@ public:
 
 typedef bool BoolOp(const Value&, const Value&);
 
-BoolOrNone booleval(BoolOp* op, ValueExpression& e1, ValueExpression& e2, const Env& env) {
+BoolOrNone booleval(const BoolOp& op, ValueExpression& e1, ValueExpression& e2, const Env& env) {
     const Value v1(e1.eval(env));
     if (!unknown(v1)) {
         const Value v2(e2.eval(env));
@@ -569,7 +569,7 @@ class Eq : public ComparisonOperator {
     }
 
     BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(&operator==, e1, e2, env);
+        return booleval(operator==, e1, e2, env);
     }
 };
 
@@ -580,7 +580,7 @@ class Neq : public ComparisonOperator {
     }
 
     BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(&operator!=, e1, e2, env);
+        return booleval(operator!=, e1, e2, env);
     }
 };
 
@@ -591,7 +591,7 @@ class Ls : public ComparisonOperator {
     }
 
     BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(&operator<, e1, e2, env);
+        return booleval(operator<, e1, e2, env);
     }
 };
 
@@ -602,7 +602,7 @@ class Gr : public ComparisonOperator {
     }
 
     BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(&operator>, e1, e2, env);
+        return booleval(operator>, e1, e2, env);
     }
 };
 
@@ -613,7 +613,7 @@ class Lseq : public ComparisonOperator {
     }
 
     BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(&operator<=, e1, e2, env);
+        return booleval(operator<=, e1, e2, env);
     }
 };
 
@@ -624,7 +624,7 @@ class Greq : public ComparisonOperator {
     }
 
     BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(&operator>=, e1, e2, env);
+        return booleval(operator>=, e1, e2, env);
     }
 };
 
@@ -781,7 +781,7 @@ static unique_ptr<ValueExpression> andExpression(Tokeniser& tokeniser)
 
 static unique_ptr<BoolExpression> conditionalNegate(bool negated, unique_ptr<BoolExpression> e)
 {
-    return negated ? make_unique<UnaryBooleanExpression>(&notOp, std::move(e)) : std::move(e);
+    return negated ? make_unique<UnaryBooleanExpression>(notOp, std::move(e)) : std::move(e);
 }
 
 static unique_ptr<BoolExpression> specialComparisons(Tokeniser& tokeniser, unique_ptr<ValueExpression> e1, bool negated = false) {
@@ -839,7 +839,7 @@ static unique_ptr<BoolExpression> specialComparisons(Tokeniser& tokeniser, uniqu
 static unique_ptr<ValueExpression> comparisonExpression(Tokeniser& tokeniser)
 {
     if ( tokeniser.nextToken().type==T_NOT ) {
-        return make_unique<UnaryBooleanExpression>(&notOp, comparisonExpression(tokeniser));
+        return make_unique<UnaryBooleanExpression>(notOp, comparisonExpression(tokeniser));
     }
 
     tokeniser.returnTokens();
@@ -852,10 +852,10 @@ static unique_ptr<ValueExpression> comparisonExpression(Tokeniser& tokeniser)
         // The rest must be T_NULL or T_NOT, T_NULL
         switch (tokeniser.nextToken().type) {
         case T_NULL:
-            return make_unique<UnaryBooleanExpression>(&isNullOp, std::move(e1));
+            return make_unique<UnaryBooleanExpression>(isNullOp, std::move(e1));
         case T_NOT:
             if ( tokeniser.nextToken().type == T_NULL)
-                return make_unique<UnaryBooleanExpression>(&isNonNullOp, std::move(e1));
+                return make_unique<UnaryBooleanExpression>(isNonNullOp, std::move(e1));
         default:
             throwParseError(tokeniser, "expected NULL or NOT NULL after IS");
         }
@@ -876,7 +876,7 @@ static unique_ptr<ValueExpression> comparisonExpression(Tokeniser& tokeniser)
         tokeniser.returnTokens();
         return e1;
     }
-    return make_unique<ComparisonExpression>(op, std::move(e1), addExpression(tokeniser));
+    return make_unique<ComparisonExpression>(*op, std::move(e1), addExpression(tokeniser));
 }
 
 static unique_ptr<ValueExpression> addExpression(Tokeniser& tokeniser)
@@ -892,7 +892,7 @@ static unique_ptr<ValueExpression> addExpression(Tokeniser& tokeniser)
         default:
             throwParseError(tokeniser, "internal error processing binary + or -");
         }
-        e = make_unique<ArithmeticExpression>(op, std::move(e), multiplyExpression(tokeniser));
+        e = make_unique<ArithmeticExpression>(*op, std::move(e), multiplyExpression(tokeniser));
         t = tokeniser.nextToken();
     }
 
@@ -913,7 +913,7 @@ static unique_ptr<ValueExpression> multiplyExpression(Tokeniser& tokeniser)
         default:
             throwParseError(tokeniser, "internal error processing * or /");
         }
-        e = make_unique<ArithmeticExpression>(op, std::move(e), unaryArithExpression(tokeniser));
+        e = make_unique<ArithmeticExpression>(*op, std::move(e), unaryArithExpression(tokeniser));
         t = tokeniser.nextToken();
     }
 
@@ -940,7 +940,7 @@ static unique_ptr<ValueExpression> unaryArithExpression(Tokeniser& tokeniser)
             return exactNumeric(t, true);
         } else {
             tokeniser.returnTokens();
-            return make_unique<UnaryArithExpression>(&negate, unaryArithExpression(tokeniser));
+            return make_unique<UnaryArithExpression>(negate, unaryArithExpression(tokeniser));
         }
     }
     default:
