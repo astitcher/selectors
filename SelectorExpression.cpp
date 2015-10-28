@@ -115,7 +115,7 @@ namespace selector {
 class ValueExpression : public Expression {
 public:
     virtual ~ValueExpression() {}
-    virtual void repr(std::ostream&) const = 0;
+    virtual void repr(ostream&) const = 0;
     virtual Value eval(const Env&) const = 0;
 
     virtual BoolOrNone eval_bool(const Env& env) const {
@@ -128,7 +128,7 @@ public:
 class BoolExpression : public ValueExpression {
 public:
     virtual ~BoolExpression() {}
-    virtual void repr(std::ostream&) const = 0;
+    virtual void repr(ostream&) const = 0;
     virtual BoolOrNone eval_bool(const Env&) const = 0;
 
     Value eval(const Env& env) const {
@@ -138,67 +138,39 @@ public:
 
 // Operators
 
-class ComparisonOperator {
+class Operator {
 public:
-    virtual ~ComparisonOperator() {}
+    virtual ~Operator() {}
     virtual void repr(ostream&) const = 0;
+};
+
+ostream& operator<<(ostream& os, const Operator& e)
+{
+    e.repr(os);
+    return os;
+}
+
+class ComparisonOperator : public Operator {
+public:
     virtual BoolOrNone eval(ValueExpression&, ValueExpression&, const Env&) const = 0;
 };
 
-class UnaryBooleanOperator {
+class UnaryBooleanOperator : public Operator {
 public:
-    virtual ~UnaryBooleanOperator() {}
-    virtual void repr(ostream&) const = 0;
     virtual BoolOrNone eval(ValueExpression&, const Env&) const = 0;
 };
 
-class ArithmeticOperator {
+class ArithmeticOperator : public Operator {
 public:
-    virtual ~ArithmeticOperator() {}
-    virtual void repr(ostream&) const = 0;
     virtual Value eval(ValueExpression&, ValueExpression&, const Env&) const = 0;
 };
 
-class UnaryArithmeticOperator {
+class UnaryArithmeticOperator : public Operator {
 public:
-    virtual ~UnaryArithmeticOperator() {}
-    virtual void repr(ostream&) const = 0;
     virtual Value eval(ValueExpression&, const Env&) const = 0;
 };
 
 ////////////////////////////////////////////////////
-
-// Convenience outputters
-
-ostream& operator<<(ostream& os, const ValueExpression& e)
-{
-    e.repr(os);
-    return os;
-}
-
-ostream& operator<<(ostream& os, const ComparisonOperator& e)
-{
-    e.repr(os);
-    return os;
-}
-
-ostream& operator<<(ostream& os, const UnaryBooleanOperator& e)
-{
-    e.repr(os);
-    return os;
-}
-
-ostream& operator<<(ostream& os, const ArithmeticOperator& e)
-{
-    e.repr(os);
-    return os;
-}
-
-ostream& operator<<(ostream& os, const UnaryArithmeticOperator& e)
-{
-    e.repr(os);
-    return os;
-}
 
 // Boolean Expression types...
 
