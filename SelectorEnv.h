@@ -1,5 +1,5 @@
-#ifndef QPID_BROKER_SELECTOR_H
-#define QPID_BROKER_SELECTOR_H
+#ifndef SELECTOR_ENV_H
+#define SELECTOR_ENV_H
 
 /*
  *
