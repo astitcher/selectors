@@ -165,6 +165,18 @@ bool operator>=(const Value& v1, const Value& v2)
     return false;
 }
 
+BoolOrNone operator!(const Value& v)
+{
+    switch (v.type) {
+    case Value::T_BOOL:
+        return BoolOrNone(!v.b);
+    default:
+        break;
+    }
+
+    return BN_UNKNOWN;
+}
+
 Value operator+(const Value& v1, const Value& v2)
 {
     unique_ptr<NumericPairBase> nbp(promoteNumeric(v1, v2));

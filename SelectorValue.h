@@ -111,6 +111,7 @@ bool operator<(const Value&, const Value&);
 bool operator>(const Value&, const Value&);
 bool operator<=(const Value&, const Value&);
 bool operator>=(const Value&, const Value&);
+BoolOrNone operator!(const Value&);
 
 Value operator+(const Value&, const Value&);
 Value operator-(const Value&, const Value&);

@@ -150,24 +150,95 @@ ostream& operator<<(ostream& os, const Operator& e)
     return os;
 }
 
+typedef bool CompFn(const Value&, const Value&);
+
 class ComparisonOperator : public Operator {
+    const string repr_;
+    const CompFn& fn_;
+
 public:
-    virtual BoolOrNone eval(ValueExpression&, ValueExpression&, const Env&) const = 0;
+    ComparisonOperator(const string& r, const CompFn& fn) :
+        repr_(r),
+        fn_(fn)
+    {}
+
+    void repr(ostream& o) const {
+        o << repr_;
+    }
+
+    BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
+        const Value v1(e1.eval(env));
+        if (!unknown(v1)) {
+          const Value v2(e2.eval(env));
+          if (!unknown(v2)) {
+            return BoolOrNone(fn_(v1, v2));
+          }
+        }
+        return BN_UNKNOWN;
+    }
 };
+
+typedef BoolOrNone UBoolFn(const Value&);
 
 class UnaryBooleanOperator : public Operator {
+    const string repr_;
+    const UBoolFn& fn_;
+
 public:
-    virtual BoolOrNone eval(ValueExpression&, const Env&) const = 0;
+    UnaryBooleanOperator(const string& r, const UBoolFn& fn) :
+        repr_(r),
+        fn_(fn)
+    {}
+
+    void repr(ostream& o) const {
+        o << repr_;
+    }
+
+    BoolOrNone eval(ValueExpression& e, const Env& env) const {
+        return fn_(e.eval(env));
+    }
 };
+
+typedef Value ArithFn(const Value&, const Value&);
 
 class ArithmeticOperator : public Operator {
+    const string repr_;
+    const ArithFn& fn_;
+
 public:
-    virtual Value eval(ValueExpression&, ValueExpression&, const Env&) const = 0;
+    ArithmeticOperator(const string& r, const ArithFn& fn) :
+        repr_(r),
+        fn_(fn)
+    {}
+
+    void repr(ostream& o) const {
+        o << repr_;
+    }
+
+    Value eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
+        return fn_(e1.eval(env), e2.eval(env));
+    }
 };
 
+typedef Value UArithFn(const Value&);
+
 class UnaryArithmeticOperator : public Operator {
+    const string repr_;
+    const UArithFn& fn_;
+
 public:
-    virtual Value eval(ValueExpression&, const Env&) const = 0;
+    UnaryArithmeticOperator(const string& r, const UArithFn& fn) :
+        repr_(r),
+        fn_(fn)
+    {}
+
+    void repr(ostream& o) const {
+        o << repr_;
+    }
+
+    Value eval(ValueExpression& e, const Env& env) const {
+        return fn_(e.eval(env));
+    }
 };
 
 ////////////////////////////////////////////////////
@@ -549,185 +620,27 @@ public:
 
 // Some operators...
 
-typedef bool BoolOp(const Value&, const Value&);
+auto eqOp   = ComparisonOperator{"==", operator==};
+auto neqOp  = ComparisonOperator{"!=", operator!=};
+auto lsOp   = ComparisonOperator{"<",  operator<};
+auto grOp   = ComparisonOperator{">",  operator>};
+auto lseqOp = ComparisonOperator{"<=", operator<=};
+auto greqOp = ComparisonOperator{">=", operator>=};
 
-BoolOrNone booleval(const BoolOp& op, ValueExpression& e1, ValueExpression& e2, const Env& env) {
-    const Value v1(e1.eval(env));
-    if (!unknown(v1)) {
-        const Value v2(e2.eval(env));
-        if (!unknown(v2)) {
-            return BoolOrNone(op(v1, v2));
-        }
-    }
-    return BN_UNKNOWN;
-}
+// It would be good if these could be lambdas
+BoolOrNone unknownFn(const Value& e) {return BoolOrNone(unknown(e));}
+BoolOrNone notUnknownFn(const Value& e) {return BoolOrNone(!unknown(e));}
 
-// "="
-class Eq : public ComparisonOperator {
-    void repr(ostream& os) const {
-        os << "=";
-    }
+auto isNullOp = UnaryBooleanOperator{"IsNull", unknownFn};
+auto isNonNullOp = UnaryBooleanOperator{"IsNonNull", notUnknownFn};
+auto notOp = UnaryBooleanOperator{"NOT", operator!};
 
-    BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(operator==, e1, e2, env);
-    }
-};
+auto add  = ArithmeticOperator{"+", operator+};
+auto sub  = ArithmeticOperator{"-", operator-};
+auto mult = ArithmeticOperator{"*", operator*};
+auto div  = ArithmeticOperator{"/", operator/};
 
-// "<>"
-class Neq : public ComparisonOperator {
-    void repr(ostream& os) const {
-        os << "<>";
-    }
-
-    BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(operator!=, e1, e2, env);
-    }
-};
-
-// "<"
-class Ls : public ComparisonOperator {
-    void repr(ostream& os) const {
-        os << "<";
-    }
-
-    BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(operator<, e1, e2, env);
-    }
-};
-
-// ">"
-class Gr : public ComparisonOperator {
-    void repr(ostream& os) const {
-        os << ">";
-    }
-
-    BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(operator>, e1, e2, env);
-    }
-};
-
-// "<="
-class Lseq : public ComparisonOperator {
-    void repr(ostream& os) const {
-        os << "<=";
-    }
-
-    BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(operator<=, e1, e2, env);
-    }
-};
-
-// ">="
-class Greq : public ComparisonOperator {
-    void repr(ostream& os) const {
-        os << ">=";
-    }
-
-    BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return booleval(operator>=, e1, e2, env);
-    }
-};
-
-// "IS NULL"
-class IsNull : public UnaryBooleanOperator {
-    void repr(ostream& os) const {
-        os << "IsNull";
-    }
-
-    BoolOrNone eval(ValueExpression& e, const Env& env) const {
-        return BoolOrNone(unknown(e.eval(env)));
-    }
-};
-
-// "IS NOT NULL"
-class IsNonNull : public UnaryBooleanOperator {
-    void repr(ostream& os) const {
-        os << "IsNonNull";
-    }
-
-    BoolOrNone eval(ValueExpression& e, const Env& env) const {
-        return BoolOrNone(!unknown(e.eval(env)));
-    }
-};
-
-// "NOT"
-class Not : public UnaryBooleanOperator {
-    void repr(ostream& os) const {
-        os << "NOT";
-    }
-
-    BoolOrNone eval(ValueExpression& e, const Env& env) const {
-        BoolOrNone bn = e.eval_bool(env);
-        if (bn==BN_UNKNOWN) return bn;
-        else return BoolOrNone(!bn);
-    }
-};
-
-class Negate : public UnaryArithmeticOperator {
-    void repr(ostream& os) const {
-        os << "-";
-    }
-
-    Value eval(ValueExpression& e, const Env& env) const {
-        return -e.eval(env);
-    }
-};
-
-class Add : public ArithmeticOperator {
-    void repr(ostream& os) const {
-        os << "+";
-    }
-
-    Value eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return e1.eval(env)+e2.eval(env);
-    }
-};
-
-class Sub : public ArithmeticOperator {
-    void repr(ostream& os) const {
-        os << "-";
-    }
-
-    Value eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return e1.eval(env)-e2.eval(env);
-    }
-};
-
-class Mult : public ArithmeticOperator {
-    void repr(ostream& os) const {
-        os << "*";
-    }
-
-    Value eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return e1.eval(env)*e2.eval(env);
-    }
-};
-
-class Div : public ArithmeticOperator {
-    void repr(ostream& os) const {
-        os << "/";
-    }
-
-    Value eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
-        return e1.eval(env)/e2.eval(env);
-    }
-};
-
-Eq eqOp;
-Neq neqOp;
-Ls lsOp;
-Gr grOp;
-Lseq lseqOp;
-Greq greqOp;
-IsNull isNullOp;
-IsNonNull isNonNullOp;
-Not notOp;
-
-Negate negate;
-Add add;
-Sub sub;
-Mult mult;
-Div div;
+auto negate = UnaryArithmeticOperator{"-", operator-};
 
 ////////////////////////////////////////////////////
 
