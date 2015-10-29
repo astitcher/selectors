@@ -132,10 +132,10 @@ typedef bool CompFn(Value, Value);
 
 class ComparisonOperator : public Operator {
     const string repr_;
-    const CompFn& fn_;
+    CompFn& fn_;
 
 public:
-    ComparisonOperator(const string& r, const CompFn* fn) :
+    ComparisonOperator(const string& r, CompFn* fn) :
         repr_(r),
         fn_(*fn)
     {}
@@ -160,10 +160,10 @@ typedef BoolOrNone UBoolFn(const Value&);
 
 class UnaryBooleanOperator : public Operator {
     const string repr_;
-    const UBoolFn& fn_;
+    UBoolFn& fn_;
 
 public:
-    UnaryBooleanOperator(const string& r, const UBoolFn* fn) :
+    UnaryBooleanOperator(const string& r, UBoolFn* fn) :
         repr_(r),
         fn_(*fn)
     {}
@@ -181,10 +181,10 @@ typedef Value ArithFn(Value, Value);
 
 class ArithmeticOperator : public Operator {
     const string repr_;
-    const ArithFn& fn_;
+    ArithFn& fn_;
 
 public:
-    ArithmeticOperator(const string& r, const ArithFn* fn) :
+    ArithmeticOperator(const string& r, ArithFn* fn) :
         repr_(r),
         fn_(*fn)
     {}
@@ -202,10 +202,10 @@ typedef Value UArithFn(const Value&);
 
 class UnaryArithmeticOperator : public Operator {
     const string repr_;
-    const UArithFn& fn_;
+    UArithFn& fn_;
 
 public:
-    UnaryArithmeticOperator(const string& r, const UArithFn* fn) :
+    UnaryArithmeticOperator(const string& r, UArithFn* fn) :
         repr_(r),
         fn_(*fn)
     {}
@@ -644,6 +644,7 @@ public:
 
 ////////////////////////////////////////////////////
 
+[[noreturn]]
 inline void throwParseError(const Token& token, const string& msg) {
     string error("Illegal selector: '");
     error += token.val;
@@ -652,6 +653,7 @@ inline void throwParseError(const Token& token, const string& msg) {
     throw std::range_error(error);
 }
 
+[[noreturn]]
 inline void throwParseError(Tokeniser& tokeniser, const string& msg) {
     tokeniser.returnTokens();
     throwParseError(tokeniser.nextToken(), msg);

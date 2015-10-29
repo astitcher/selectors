@@ -61,7 +61,7 @@ bool operator==(Value v1, Value v2)
     case Value::T_STRING:  return *v1.s == *v2.s;
     case Value::T_EXACT:   return  v1.i == v2.i;
     case Value::T_INEXACT: return  v1.x == v2.x;
-    case Value::T_UNKNOWN: return false;
+    default:               return false;
     }
 }
 
@@ -75,7 +75,7 @@ bool operator!=(Value v1, Value v2)
     case Value::T_STRING:  return *v1.s != *v2.s;
     case Value::T_EXACT:   return  v1.i != v2.i;
     case Value::T_INEXACT: return  v1.x != v2.x;
-    case Value::T_UNKNOWN: return false;
+    default:               return false;
     }
 }
 
