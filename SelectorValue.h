@@ -105,18 +105,18 @@ inline bool sameType(const Value& v1, const Value& v2) {
 
 std::ostream& operator<<(std::ostream& os, const Value& v);
 
-bool operator==(const Value&, const Value&);
-bool operator!=(const Value&, const Value&);
-bool operator<(const Value&, const Value&);
-bool operator>(const Value&, const Value&);
-bool operator<=(const Value&, const Value&);
-bool operator>=(const Value&, const Value&);
+bool operator==(Value, Value);
+bool operator!=(Value, Value);
+bool operator<(Value, Value);
+bool operator>(Value, Value);
+bool operator<=(Value, Value);
+bool operator>=(Value, Value);
 BoolOrNone operator!(const Value&);
 
-Value operator+(const Value&, const Value&);
-Value operator-(const Value&, const Value&);
-Value operator*(const Value&, const Value&);
-Value operator/(const Value&, const Value&);
+Value operator+(Value, Value);
+Value operator-(Value, Value);
+Value operator*(Value, Value);
+Value operator/(Value, Value);
 Value operator-(const Value&);
 
 }

@@ -419,6 +419,7 @@ BOOST_AUTO_TEST_CASE(numericEval)
 
     BOOST_CHECK(eval_selector("A>B", env));
     BOOST_CHECK(eval_selector("A=42", env));
+    BOOST_CHECK(eval_selector("42=A", env));
     BOOST_CHECK(eval_selector("B=39.0", env));
     BOOST_CHECK(eval_selector("Not A=17 or B=5.6", env));
     BOOST_CHECK(!eval_selector("A<>17 and B=5.6e17", env));

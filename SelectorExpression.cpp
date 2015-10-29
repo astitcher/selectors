@@ -128,7 +128,7 @@ ostream& operator<<(ostream& os, const Operator& e)
     return os;
 }
 
-typedef bool CompFn(const Value&, const Value&);
+typedef bool CompFn(Value, Value);
 
 class ComparisonOperator : public Operator {
     const string repr_;
@@ -177,7 +177,7 @@ public:
     }
 };
 
-typedef Value ArithFn(const Value&, const Value&);
+typedef Value ArithFn(Value, Value);
 
 class ArithmeticOperator : public Operator {
     const string repr_;
