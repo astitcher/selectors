@@ -644,7 +644,7 @@ public:
 
 ////////////////////////////////////////////////////
 
-void throwParseError(const Token& token, const string& msg) {
+inline void throwParseError(const Token& token, const string& msg) {
     string error("Illegal selector: '");
     error += token.val;
     error += "': ";
@@ -652,7 +652,7 @@ void throwParseError(const Token& token, const string& msg) {
     throw std::range_error(error);
 }
 
-void throwParseError(Tokeniser& tokeniser, const string& msg) {
+inline void throwParseError(Tokeniser& tokeniser, const string& msg) {
     tokeniser.returnTokens();
     throwParseError(tokeniser.nextToken(), msg);
 }

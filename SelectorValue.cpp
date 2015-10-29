@@ -40,7 +40,7 @@ ostream& operator<<(ostream& os, const Value& v)
     return os;
 }
 
-void promoteNumeric(Value& v1, Value& v2)
+inline void promoteNumeric(Value& v1, Value& v2)
 {
     if (!numeric(v1) || !numeric(v2)) return;
     if (sameType(v1,v2)) return;
