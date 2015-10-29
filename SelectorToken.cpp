@@ -96,7 +96,7 @@ bool tokeniseReservedWord(Token& tok)
 
     RWEntry rw;
     rw.word = tok.val.c_str();
-    std::pair<const RWEntry*, const RWEntry*> entry = std::equal_range(&reserved[0], &reserved[reserved_size], rw);
+    auto entry = std::equal_range(&reserved[0], &reserved[reserved_size], rw);
 
     if ( entry.first==entry.second ) return false;
 
