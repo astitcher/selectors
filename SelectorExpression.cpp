@@ -780,11 +780,11 @@ static unique_ptr<ValueExpression> comparisonExpression(Tokeniser& tokeniser)
         tokeniser.returnTokens();
         return specialComparisons(tokeniser, std::move(e1));
     case T_EQUAL: op = &eqOp; break;
-    case T_NEQ: op = &neqOp; break;
-    case T_LESS: op = &lsOp; break;
-    case T_GRT: op = &grOp; break;
-    case T_LSEQ: op = &lseqOp; break;
-    case T_GREQ: op = &greqOp; break;
+    case T_NEQ:   op = &neqOp; break;
+    case T_LESS:  op = &lsOp; break;
+    case T_GRT:   op = &grOp; break;
+    case T_LSEQ:  op = &lseqOp; break;
+    case T_GREQ:  op = &greqOp; break;
     default:
         tokeniser.returnTokens();
         return e1;
@@ -798,14 +798,8 @@ static unique_ptr<ValueExpression> addExpression(Tokeniser& tokeniser)
 
     auto t = tokeniser.nextToken();
     while (t.type==T_PLUS || t.type==T_MINUS ) {
-        ArithmeticOperator* op;
-        switch (t.type) {
-        case T_PLUS: op = &add; break;
-        case T_MINUS: op = &sub; break;
-        default:
-            throwParseError(tokeniser, "internal error processing binary + or -");
-        }
-        e = make_unique<ArithmeticExpression>(*op, std::move(e), multiplyExpression(tokeniser));
+        ArithmeticOperator& op = t.type==T_PLUS ? add : sub;
+        e = make_unique<ArithmeticExpression>(op, std::move(e), multiplyExpression(tokeniser));
         t = tokeniser.nextToken();
     }
 
@@ -819,14 +813,8 @@ static unique_ptr<ValueExpression> multiplyExpression(Tokeniser& tokeniser)
 
     auto t = tokeniser.nextToken();
     while (t.type==T_MULT || t.type==T_DIV ) {
-        ArithmeticOperator* op;
-        switch (t.type) {
-        case T_MULT: op = &mult; break;
-        case T_DIV: op = &div; break;
-        default:
-            throwParseError(tokeniser, "internal error processing * or /");
-        }
-        e = make_unique<ArithmeticExpression>(*op, std::move(e), unaryArithExpression(tokeniser));
+        ArithmeticOperator& op = t.type==T_MULT ? mult : div;
+        e = make_unique<ArithmeticExpression>(op, std::move(e), unaryArithExpression(tokeniser));
         t = tokeniser.nextToken();
     }
 
