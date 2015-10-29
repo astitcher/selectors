@@ -112,29 +112,7 @@ using std::vector;
 
 namespace selector {
 
-class ValueExpression : public Expression {
-public:
-    virtual ~ValueExpression() {}
-    virtual void repr(ostream&) const = 0;
-    virtual Value eval(const Env&) const = 0;
-
-    virtual BoolOrNone eval_bool(const Env& env) const {
-        Value v = eval(env);
-        if (v.type==Value::T_BOOL) return BoolOrNone(v.b);
-        else return BN_UNKNOWN;
-    }
-};
-
-class BoolExpression : public ValueExpression {
-public:
-    virtual ~BoolExpression() {}
-    virtual void repr(ostream&) const = 0;
-    virtual BoolOrNone eval_bool(const Env&) const = 0;
-
-    Value eval(const Env& env) const {
-        return eval_bool(env);
-    }
-};
+////////////////////////////////////////////////////
 
 // Operators
 
@@ -157,16 +135,16 @@ class ComparisonOperator : public Operator {
     const CompFn& fn_;
 
 public:
-    ComparisonOperator(const string& r, const CompFn& fn) :
+    ComparisonOperator(const string& r, const CompFn* fn) :
         repr_(r),
-        fn_(fn)
+        fn_(*fn)
     {}
 
     void repr(ostream& o) const {
         o << repr_;
     }
 
-    BoolOrNone eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
+    BoolOrNone eval(Expression& e1, Expression& e2, const Env& env) const {
         const Value v1(e1.eval(env));
         if (!unknown(v1)) {
           const Value v2(e2.eval(env));
@@ -185,16 +163,16 @@ class UnaryBooleanOperator : public Operator {
     const UBoolFn& fn_;
 
 public:
-    UnaryBooleanOperator(const string& r, const UBoolFn& fn) :
+    UnaryBooleanOperator(const string& r, const UBoolFn* fn) :
         repr_(r),
-        fn_(fn)
+        fn_(*fn)
     {}
 
     void repr(ostream& o) const {
         o << repr_;
     }
 
-    BoolOrNone eval(ValueExpression& e, const Env& env) const {
+    BoolOrNone eval(Expression& e, const Env& env) const {
         return fn_(e.eval(env));
     }
 };
@@ -206,16 +184,16 @@ class ArithmeticOperator : public Operator {
     const ArithFn& fn_;
 
 public:
-    ArithmeticOperator(const string& r, const ArithFn& fn) :
+    ArithmeticOperator(const string& r, const ArithFn* fn) :
         repr_(r),
-        fn_(fn)
+        fn_(*fn)
     {}
 
     void repr(ostream& o) const {
         o << repr_;
     }
 
-    Value eval(ValueExpression& e1, ValueExpression& e2, const Env& env) const {
+    Value eval(Expression& e1, Expression& e2, const Env& env) const {
         return fn_(e1.eval(env), e2.eval(env));
     }
 };
@@ -227,21 +205,69 @@ class UnaryArithmeticOperator : public Operator {
     const UArithFn& fn_;
 
 public:
-    UnaryArithmeticOperator(const string& r, const UArithFn& fn) :
+    UnaryArithmeticOperator(const string& r, const UArithFn* fn) :
         repr_(r),
-        fn_(fn)
+        fn_(*fn)
     {}
 
     void repr(ostream& o) const {
         o << repr_;
     }
 
-    Value eval(ValueExpression& e, const Env& env) const {
+    Value eval(Expression& e, const Env& env) const {
         return fn_(e.eval(env));
     }
 };
 
 ////////////////////////////////////////////////////
+
+// Some operators...
+
+auto eqOp   = ComparisonOperator{"==", operator==};
+auto neqOp  = ComparisonOperator{"!=", operator!=};
+auto lsOp   = ComparisonOperator{"<",  operator<};
+auto grOp   = ComparisonOperator{">",  operator>};
+auto lseqOp = ComparisonOperator{"<=", operator<=};
+auto greqOp = ComparisonOperator{">=", operator>=};
+
+auto isNullOp    = UnaryBooleanOperator{"IsNull",    [](const Value& v){return BoolOrNone(unknown(v));}};
+auto isNonNullOp = UnaryBooleanOperator{"IsNonNull", [](const Value& v){return BoolOrNone(!unknown(v));}};
+auto notOp = UnaryBooleanOperator{"NOT", operator!};
+
+auto add  = ArithmeticOperator{"+", operator+};
+auto sub  = ArithmeticOperator{"-", operator-};
+auto mult = ArithmeticOperator{"*", operator*};
+auto div  = ArithmeticOperator{"/", operator/};
+
+auto negate = UnaryArithmeticOperator{"-", operator-};
+
+////////////////////////////////////////////////////
+
+// Expressions...
+
+class ValueExpression : public Expression {
+public:
+  virtual ~ValueExpression() {}
+  virtual void repr(ostream&) const = 0;
+  virtual Value eval(const Env&) const = 0;
+  
+  virtual BoolOrNone eval_bool(const Env& env) const {
+    Value v = eval(env);
+    if (v.type==Value::T_BOOL) return BoolOrNone(v.b);
+    else return BN_UNKNOWN;
+  }
+};
+
+class BoolExpression : public ValueExpression {
+public:
+  virtual ~BoolExpression() {}
+  virtual void repr(ostream&) const = 0;
+  virtual BoolOrNone eval_bool(const Env&) const = 0;
+  
+  Value eval(const Env& env) const {
+    return eval_bool(env);
+  }
+};
 
 // Boolean Expression types...
 
@@ -615,32 +641,6 @@ public:
         return env.value(identifier);
     }
 };
-
-////////////////////////////////////////////////////
-
-// Some operators...
-
-auto eqOp   = ComparisonOperator{"==", operator==};
-auto neqOp  = ComparisonOperator{"!=", operator!=};
-auto lsOp   = ComparisonOperator{"<",  operator<};
-auto grOp   = ComparisonOperator{">",  operator>};
-auto lseqOp = ComparisonOperator{"<=", operator<=};
-auto greqOp = ComparisonOperator{">=", operator>=};
-
-// It would be good if these could be lambdas
-BoolOrNone unknownFn(const Value& e) {return BoolOrNone(unknown(e));}
-BoolOrNone notUnknownFn(const Value& e) {return BoolOrNone(!unknown(e));}
-
-auto isNullOp = UnaryBooleanOperator{"IsNull", unknownFn};
-auto isNonNullOp = UnaryBooleanOperator{"IsNonNull", notUnknownFn};
-auto notOp = UnaryBooleanOperator{"NOT", operator!};
-
-auto add  = ArithmeticOperator{"+", operator+};
-auto sub  = ArithmeticOperator{"-", operator-};
-auto mult = ArithmeticOperator{"*", operator*};
-auto div  = ArithmeticOperator{"/", operator/};
-
-auto negate = UnaryArithmeticOperator{"-", operator-};
 
 ////////////////////////////////////////////////////
 
