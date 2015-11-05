@@ -644,8 +644,10 @@ public:
 
 ////////////////////////////////////////////////////
 
+struct Parse {
+
 [[noreturn]]
-inline void throwParseError(const Token& token, const string& msg) {
+static inline void throwParseError(const Token& token, const string& msg) {
     string error("Illegal selector: '");
     error += token.val;
     error += "': ";
@@ -654,12 +656,10 @@ inline void throwParseError(const Token& token, const string& msg) {
 }
 
 [[noreturn]]
-inline void throwParseError(Tokeniser& tokeniser, const string& msg) {
+static inline void throwParseError(Tokeniser& tokeniser, const string& msg) {
     tokeniser.returnTokens();
     throwParseError(tokeniser.nextToken(), msg);
 }
-
-struct Parse {
 
 static unique_ptr<ValueExpression> selectorExpression(Tokeniser& tokeniser)
 {
@@ -824,36 +824,6 @@ static unique_ptr<ValueExpression> multiplyExpression(Tokeniser& tokeniser)
     return e;
 }
 
-static unique_ptr<ValueExpression> unaryArithExpression(Tokeniser& tokeniser)
-{
-    switch (tokeniser.nextToken().type) {
-    case T_LPAREN: {
-        auto e = orExpression(tokeniser);
-        if ( tokeniser.nextToken().type!=T_RPAREN ) {
-            throwParseError(tokeniser, "missing ')' after '('");
-        }
-        return e;
-    }
-    case T_PLUS:
-        break; // Unary + is no op
-    case T_MINUS: {
-        auto t = tokeniser.nextToken();
-        // Special case for negative numerics
-        if (t.type==T_NUMERIC_EXACT) {
-            return exactNumeric(t, true);
-        } else {
-            tokeniser.returnTokens();
-            return make_unique<UnaryArithExpression>(negate, unaryArithExpression(tokeniser));
-        }
-    }
-    default:
-        tokeniser.returnTokens();
-        break;
-    }
-
-    return primaryExpression(tokeniser);
-}
-
 static unique_ptr<ValueExpression> exactNumeric(const Token& token, bool negate)
 {
     int base = 0;
@@ -886,6 +856,36 @@ static unique_ptr<ValueExpression> approxNumeric(const Token& token)
     double value = std::strtod(s.c_str(), 0);
     if (!errno) return make_unique<Literal>(value);
     throwParseError(token, "floating literal overflow/underflow");
+}
+
+static unique_ptr<ValueExpression> unaryArithExpression(Tokeniser& tokeniser)
+{
+    switch (tokeniser.nextToken().type) {
+    case T_LPAREN: {
+        auto e = orExpression(tokeniser);
+        if ( tokeniser.nextToken().type!=T_RPAREN ) {
+            throwParseError(tokeniser, "missing ')' after '('");
+        }
+        return e;
+    }
+    case T_PLUS:
+        break; // Unary + is no op
+    case T_MINUS: {
+        auto t = tokeniser.nextToken();
+        // Special case for negative numerics
+        if (t.type==T_NUMERIC_EXACT) {
+            return exactNumeric(t, true);
+        } else {
+            tokeniser.returnTokens();
+            return make_unique<UnaryArithExpression>(negate, unaryArithExpression(tokeniser));
+        }
+    }
+    default:
+        tokeniser.returnTokens();
+        break;
+    }
+
+    return primaryExpression(tokeniser);
 }
 
 static unique_ptr<ValueExpression> primaryExpression(Tokeniser& tokeniser)
