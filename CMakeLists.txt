@@ -17,6 +17,10 @@
 # under the License.
 #
 
+cmake_minimum_required(VERSION 2.8)
+
+add_compile_options(-std=c++1y -flto)
+
 add_library(selectors SHARED SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp)
 
 add_executable(selector_tests SelectorTests.cpp)
