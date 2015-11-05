@@ -103,6 +103,7 @@ inline bool sameType(const Value& v1, const Value& v2) {
     return v1.type == v2.type;
 }
 
+__attribute__((visibility("default")))
 std::ostream& operator<<(std::ostream& os, const Value& v);
 
 bool operator==(Value, Value);

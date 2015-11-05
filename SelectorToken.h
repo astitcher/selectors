@@ -94,16 +94,21 @@ struct Token {
     }
 };
 
+__attribute__((visibility("default")))
 std::ostream& operator<<(std::ostream& os, const Token& t);
 
-class TokenException : public std::range_error {
+class __attribute__((visibility("default")))
+TokenException : public std::range_error {
 public:
     TokenException(const std::string&);
 };
 
+
+__attribute__((visibility("default")))
 bool tokenise(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok);
 
-class Tokeniser {
+class
+Tokeniser {
     std::vector<Token> tokens;
     unsigned int tokp;
 
@@ -112,10 +117,10 @@ class Tokeniser {
     std::string::const_iterator inEnd;
 
 public:
-    Tokeniser(const std::string::const_iterator& s, const std::string::const_iterator& e);
-    void returnTokens(unsigned int n = 1);
-    const Token& nextToken();
-    std::string remaining();
+    __attribute__((visibility("default"))) Tokeniser(const std::string::const_iterator& s, const std::string::const_iterator& e);
+    __attribute__((visibility("default"))) void returnTokens(unsigned int n = 1);
+    __attribute__((visibility("default"))) const Token& nextToken();
+    __attribute__((visibility("default"))) std::string remaining();
 };
 
 }

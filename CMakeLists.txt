@@ -19,7 +19,7 @@
 
 cmake_minimum_required(VERSION 2.8)
 
-add_compile_options(-std=c++1y -flto)
+add_compile_options(-std=c++1y -flto -fvisibility-inlines-hidden -fvisibility=hidden)
 
 add_library(selectors SHARED SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp)
 

@@ -40,9 +40,9 @@ public:
     virtual BoolOrNone eval_bool(const Env&) const = 0;
 };
 
-std::unique_ptr<Expression> make_selector(const std::string& exp);
-bool eval(const Expression&, const Env&);
-std::ostream& operator<<(std::ostream&, const Expression&);
+__attribute__((visibility("default"))) std::unique_ptr<Expression> make_selector(const std::string& exp);
+__attribute__((visibility("default"))) bool eval(const Expression&, const Env&);
+__attribute__((visibility("default"))) std::ostream& operator<<(std::ostream&, const Expression&);
 }
 
 #endif
