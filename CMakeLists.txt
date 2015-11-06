@@ -22,6 +22,6 @@ cmake_minimum_required(VERSION 2.8)
 add_compile_options(-std=c++1y -flto -fvisibility-inlines-hidden -fvisibility=hidden)
 
 add_library(selectors SHARED SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp)
-
+set_target_properties(selectors PROPERTIES LINK_FLAGS -flto)
 add_executable(selector_tests SelectorTests.cpp)
 target_link_libraries(selector_tests selectors)

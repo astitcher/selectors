@@ -32,9 +32,11 @@
 #include <ostream>
 #include <regex>
 #include <string>
+#include <type_traits>
 #include <sstream>
 #include <vector>
 
+using std::enable_if;
 using std::make_unique;
 using std::ostream;
 using std::string;
@@ -112,30 +114,32 @@ using std::vector;
 
 namespace selector {
 
+// Define operator<< for classes that have repr()
+// need to define type trait has_repr for those clases
+template<class T>
+struct has_repr{static const bool value = false;};
+
+template <class T>
+inline
+typename enable_if<has_repr<T>::value, ostream&>::type
+operator<<(ostream& o, const T& t)
+{
+    t.repr(o);
+    return o;
+}
+
 ////////////////////////////////////////////////////
 
 // Operators
 
-class Operator {
-public:
-    virtual ~Operator() {}
-    virtual void repr(ostream&) const = 0;
-};
-
-ostream& operator<<(ostream& os, const Operator& e)
-{
-    e.repr(os);
-    return os;
-}
-
 typedef bool CompFn(Value, Value);
 
-class ComparisonOperator : public Operator {
-    const string repr_;
+class ComparisonOperator {
+    const char* repr_;
     CompFn& fn_;
 
 public:
-    ComparisonOperator(const string& r, CompFn* fn) :
+    constexpr ComparisonOperator(const char* r, CompFn* fn) :
         repr_(r),
         fn_(*fn)
     {}
@@ -156,14 +160,16 @@ public:
     }
 };
 
+template <> struct has_repr<ComparisonOperator> {static const bool value = true;};
+
 typedef BoolOrNone UBoolFn(const Value&);
 
-class UnaryBooleanOperator : public Operator {
-    const string repr_;
+class UnaryBooleanOperator {
+    const char* repr_;
     UBoolFn& fn_;
 
 public:
-    UnaryBooleanOperator(const string& r, UBoolFn* fn) :
+    constexpr UnaryBooleanOperator(const char* r, UBoolFn* fn) :
         repr_(r),
         fn_(*fn)
     {}
@@ -179,12 +185,14 @@ public:
 
 typedef Value ArithFn(Value, Value);
 
-class ArithmeticOperator : public Operator {
-    const string repr_;
+template <> struct has_repr<UnaryBooleanOperator> {static const bool value = true;};
+
+class ArithmeticOperator {
+    const char* repr_;
     ArithFn& fn_;
 
 public:
-    ArithmeticOperator(const string& r, ArithFn* fn) :
+    constexpr ArithmeticOperator(const char* r, ArithFn* fn) :
         repr_(r),
         fn_(*fn)
     {}
@@ -200,12 +208,14 @@ public:
 
 typedef Value UArithFn(const Value&);
 
-class UnaryArithmeticOperator : public Operator {
-    const string repr_;
+template <> struct has_repr<ArithmeticOperator> {static const bool value = true;};
+
+class UnaryArithmeticOperator {
+    const char* repr_;
     UArithFn& fn_;
 
 public:
-    UnaryArithmeticOperator(const string& r, UArithFn* fn) :
+    constexpr UnaryArithmeticOperator(const char* r, UArithFn* fn) :
         repr_(r),
         fn_(*fn)
     {}
@@ -219,27 +229,33 @@ public:
     }
 };
 
+template <> struct has_repr<UnaryArithmeticOperator> {static const bool value = true;};
+
 ////////////////////////////////////////////////////
 
 // Some operators...
 
-auto eqOp   = ComparisonOperator{"==", operator==};
-auto neqOp  = ComparisonOperator{"!=", operator!=};
-auto lsOp   = ComparisonOperator{"<",  operator<};
-auto grOp   = ComparisonOperator{">",  operator>};
-auto lseqOp = ComparisonOperator{"<=", operator<=};
-auto greqOp = ComparisonOperator{">=", operator>=};
+constexpr auto eqOp   = ComparisonOperator{"==", operator==};
+constexpr auto neqOp  = ComparisonOperator{"!=", operator!=};
+constexpr auto lsOp   = ComparisonOperator{"<",  operator<};
+constexpr auto grOp   = ComparisonOperator{">",  operator>};
+constexpr auto lseqOp = ComparisonOperator{"<=", operator<=};
+constexpr auto greqOp = ComparisonOperator{">=", operator>=};
 
-auto isNullOp    = UnaryBooleanOperator{"IsNull",    [](const Value& v){return BoolOrNone(unknown(v));}};
-auto isNonNullOp = UnaryBooleanOperator{"IsNonNull", [](const Value& v){return BoolOrNone(!unknown(v));}};
-auto notOp = UnaryBooleanOperator{"NOT", operator!};
+// Can't use lambdas as they won't work with constexpr in C++14
+BoolOrNone isNullOpEval(const Value& v){return BoolOrNone(unknown(v));};
+BoolOrNone isNonNullOpEval(const Value& v){return BoolOrNone(!unknown(v));};
 
-auto add  = ArithmeticOperator{"+", operator+};
-auto sub  = ArithmeticOperator{"-", operator-};
-auto mult = ArithmeticOperator{"*", operator*};
-auto div  = ArithmeticOperator{"/", operator/};
+constexpr auto isNullOp    = UnaryBooleanOperator{"IsNull", isNullOpEval};
+constexpr auto isNonNullOp = UnaryBooleanOperator{"IsNonNull", isNonNullOpEval};
+constexpr auto notOp       = UnaryBooleanOperator{"NOT", operator!};
 
-auto negate = UnaryArithmeticOperator{"-", operator-};
+constexpr auto add  = ArithmeticOperator{"+", operator+};
+constexpr auto sub  = ArithmeticOperator{"-", operator-};
+constexpr auto mult = ArithmeticOperator{"*", operator*};
+constexpr auto div  = ArithmeticOperator{"/", operator/};
+
+constexpr auto negate = UnaryArithmeticOperator{"-", operator-};
 
 ////////////////////////////////////////////////////
 
@@ -760,7 +776,7 @@ static unique_ptr<ValueExpression> comparisonExpression(Tokeniser& tokeniser)
     tokeniser.returnTokens();
     auto e1 = addExpression(tokeniser);
 
-    ComparisonOperator* op;
+    const ComparisonOperator* op;
     switch (tokeniser.nextToken().type) {
     // Check for "IS NULL" and "IS NOT NULL"
     case T_IS:
@@ -800,7 +816,7 @@ static unique_ptr<ValueExpression> addExpression(Tokeniser& tokeniser)
 
     auto t = tokeniser.nextToken();
     while (t.type==T_PLUS || t.type==T_MINUS ) {
-        ArithmeticOperator& op = t.type==T_PLUS ? add : sub;
+        const ArithmeticOperator& op = t.type==T_PLUS ? add : sub;
         e = make_unique<ArithmeticExpression>(op, std::move(e), multiplyExpression(tokeniser));
         t = tokeniser.nextToken();
     }
@@ -815,7 +831,7 @@ static unique_ptr<ValueExpression> multiplyExpression(Tokeniser& tokeniser)
 
     auto t = tokeniser.nextToken();
     while (t.type==T_MULT || t.type==T_DIV ) {
-        ArithmeticOperator& op = t.type==T_MULT ? mult : div;
+        const ArithmeticOperator& op = t.type==T_MULT ? mult : div;
         e = make_unique<ArithmeticExpression>(op, std::move(e), unaryArithExpression(tokeniser));
         t = tokeniser.nextToken();
     }
