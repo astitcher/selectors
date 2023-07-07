@@ -367,7 +367,7 @@ public:
     }
 
     void set(const string& id, const selector::Value& value) {
-        if (value.type==selector::Value::T_STRING) {
+        if (value.type()==selector::Value::T_STRING) {
             set(id, get<string_view>(value.value));
         } else {
             values[id] = value;

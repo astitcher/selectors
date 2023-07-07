@@ -24,23 +24,37 @@
 #include <cassert>
 #include <cstdint>
 #include <ostream>
+#include <variant>
 
 using std::boolalpha;
 using std::get;
 using std::ostream;
 using std::string_view;
 
+// Define overload until C++26!
+template <class ...Fs>
+struct overload : Fs... {
+  template <class ...Ts>
+  overload(Ts&& ...ts) : Fs{std::forward<Ts>(ts)}...
+  {} 
+
+  using Fs::operator()...;
+};
+
+template <class ...Ts>
+overload(Ts&&...) -> overload<std::remove_reference_t<Ts>...>;
+
 namespace selector {
 
 ostream& operator<<(ostream& os, const Value& v)
 {
-    switch (v.type) {
-    case Value::T_UNKNOWN: os << "UNKNOWN"; break;
-    case Value::T_BOOL: os << "BOOL:" << boolalpha << get<bool>(v.value); break;
-    case Value::T_EXACT: os << "EXACT:" << get<int64_t>(v.value); break;
-    case Value::T_INEXACT: os << "APPROX:" << get<double>(v.value); break;
-    case Value::T_STRING: os << "STRING:'" << get<string_view>(v.value) << "'"; break;
-    };
+    std::visit(overload(
+        [&](std::monostate) { os << "UNKNOWN"; },
+        [&](bool b) {os << "BOOL:" << boolalpha << b; },
+        [&](int64_t i) { os << "EXACT:" << i; },
+        [&](double d) { os << "APPROX:" << d; },
+        [&](string_view sv) { os << "STRING:'" << sv << "'"; }
+    ), v.value);
     return os;
 }
 
@@ -48,7 +62,7 @@ inline void promoteNumeric(Value& v1, Value& v2)
 {
     if (!numeric(v1) || !numeric(v2)) return;
     if (sameType(v1,v2)) return;
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_INEXACT: v2 = double(get<int64_t>(v2.value)); return;
     case Value::T_EXACT:   v1 = double(get<int64_t>(v1.value)); return;
     default:               assert(false);
@@ -75,7 +89,7 @@ bool operator<(Value v1, Value v2)
 {
     promoteNumeric(v1, v2);
 
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_EXACT:
     case Value::T_INEXACT:
         return v1.value < v2.value;
@@ -89,7 +103,7 @@ bool operator>(Value v1, Value v2)
 {
     promoteNumeric(v1, v2);
 
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_EXACT:
     case Value::T_INEXACT:
         return v1.value > v2.value;
@@ -103,7 +117,7 @@ bool operator<=(Value v1, Value v2)
 {
     promoteNumeric(v1, v2);
 
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_EXACT:
     case Value::T_INEXACT:
         return v1.value <= v2.value;
@@ -117,7 +131,7 @@ bool operator>=(Value v1, Value v2)
 {
     promoteNumeric(v1, v2);
 
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_EXACT:
     case Value::T_INEXACT:
         return v1.value >= v2.value;
@@ -129,7 +143,7 @@ bool operator>=(Value v1, Value v2)
 
 BoolOrNone operator!(const Value& v)
 {
-    switch (v.type) {
+    switch (v.type()) {
     case Value::T_BOOL:
         return BoolOrNone(!get<bool>(v.value));
     default:
@@ -142,7 +156,7 @@ Value operator+(Value v1, Value v2)
 {
     promoteNumeric(v1, v2);
 
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_EXACT:
         return get<int64_t>(v1.value) + get<int64_t>(v2.value);
     case Value::T_INEXACT:
@@ -157,7 +171,7 @@ Value operator-(Value v1, Value v2)
 {
     promoteNumeric(v1, v2);
 
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_EXACT:
         return get<int64_t>(v1.value) - get<int64_t>(v2.value);
     case Value::T_INEXACT:
@@ -172,7 +186,7 @@ Value operator*(Value v1, Value v2)
 {
     promoteNumeric(v1, v2);
 
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_EXACT:
         return get<int64_t>(v1.value) * get<int64_t>(v2.value);
     case Value::T_INEXACT:
@@ -187,7 +201,7 @@ Value operator/(Value v1, Value v2)
 {
     promoteNumeric(v1, v2);
 
-    switch (v1.type) {
+    switch (v1.type()) {
     case Value::T_EXACT:
         return get<int64_t>(v1.value) / get<int64_t>(v2.value);
     case Value::T_INEXACT:
@@ -200,7 +214,7 @@ Value operator/(Value v1, Value v2)
 
 Value operator-(const Value& v)
 {
-    switch (v.type) {
+    switch (v.type()) {
     case Value::T_EXACT:
         return -get<int64_t>(v.value);
     case Value::T_INEXACT:

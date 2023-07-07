@@ -41,69 +41,67 @@ enum BoolOrNone : uint8_t {
 // is responsible for managing its lifetime.
 class Value {
 public:
-    std::variant<bool, int64_t, double, std::string_view> value;
+    std::variant<std::monostate, bool, int64_t, double, std::string_view> value;
+    // NB: Must keep this in the same order as the variant or strange things will happen
     enum : uint8_t {
         T_UNKNOWN,
         T_BOOL,
-        T_STRING,
         T_EXACT,
-        T_INEXACT
-    } type;
+        T_INEXACT,
+        T_STRING
+    };
 
     Value(const Value&) = default;
     Value& operator=(const Value&) = default;
     ~Value() noexcept = default;
 
-    constexpr Value() :
-        type(T_UNKNOWN)
+    constexpr size_t type() const {
+        return value.index();
+    }
+
+    constexpr Value()
     {}
 
     constexpr Value(std::string_view s0) :
-        value(s0),
-        type(T_STRING)
+        value(s0)
     {}
 
     constexpr Value(const int64_t i0) :
-        value(i0),
-        type(T_EXACT)
+        value(i0)
     {}
 
     constexpr Value(const int32_t i0) :
-        value(i0),
-        type(T_EXACT)
+        value(i0)
     {}
 
     constexpr Value(const double x0) :
-        value(x0),
-        type(T_INEXACT)
+        value(x0)
     {}
 
     constexpr Value(bool b0) :
-        value(b0),
-        type(T_BOOL)
+        value(b0)
     {}
 
     constexpr Value(BoolOrNone bn) :
-        value((bool)bn),
-        type(bn==BN_UNKNOWN ? T_UNKNOWN : T_BOOL)
-    {}
+        value((bool)bn)
+    { if (bn==BN_UNKNOWN) value=std::monostate{}; }
 
-    constexpr operator BoolOrNone() {
-        if (type == T_BOOL) return BoolOrNone{std::get<bool>(value)};
+    constexpr operator BoolOrNone() const {
+        if (value.index() == T_BOOL) return BoolOrNone{std::get<bool>(value)};
         else return BN_UNKNOWN;
     }
 };
 
 inline constexpr bool unknown(const Value& v) {
-    return v.type == Value::T_UNKNOWN;
+    return v.value.index() == Value::T_UNKNOWN;
 }
 
 inline constexpr bool numeric(const Value& v) {
-    return v.type == Value::T_EXACT || v.type == Value::T_INEXACT;
+    return v.value.index() == Value::T_EXACT || v.value.index() == Value::T_INEXACT;
 }
 
 inline constexpr bool sameType(const Value& v1, const Value& v2) {
-    return v1.type == v2.type;
+    return v1.value.index() == v2.value.index();
 }
 
 __attribute__((visibility("default")))

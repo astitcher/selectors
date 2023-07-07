@@ -455,7 +455,7 @@ public:
 
     BoolOrNone eval_bool(const Env& env) const {
         Value v(e->eval(env));
-        if ( v.type!=Value::T_STRING ) return BN_UNKNOWN;
+        if ( v.type()!=Value::T_STRING ) return BN_UNKNOWN;
         auto sv = std::get<string_view>(v.value);
         return BoolOrNone(std::regex_match(sv.cbegin(), sv.cend(), regexBuffer));
     }
