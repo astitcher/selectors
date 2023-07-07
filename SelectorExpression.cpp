@@ -21,6 +21,8 @@
 
 #include "SelectorExpression.h"
 
+#include "selectors.h"
+
 #include "SelectorEnv.h"
 #include "SelectorToken.h"
 #include "SelectorValue.h"
@@ -946,4 +948,17 @@ std::ostream& operator<<(std::ostream& o, const Expression& e)
     return o;
 }
 
+}
+
+///////////////////////////////////////////////////////////
+
+// C interfaces
+struct selector_expression_t : selector::Expression {};
+
+const selector_expression_t* selector_expression(const char* exp) {
+    return static_cast<selector_expression_t*>(selector::make_selector(exp).release());
+}
+
+void selector_expression_free(const selector_expression_t* exp) {
+    delete exp;
 }
