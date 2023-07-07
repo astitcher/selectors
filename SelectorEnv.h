@@ -33,9 +33,9 @@ class Value;
  */
 class Env {
 public:
-    virtual ~Env() {};
+    virtual ~Env() noexcept = default;
 
-    virtual const Value& value(const std::string&) const = 0;
+    virtual const Value& value(const std::string_view) const = 0;
 };
 
 }

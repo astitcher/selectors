@@ -17,15 +17,19 @@
 # under the License.
 #
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.25)
 
-add_compile_options(-flto -fvisibility-inlines-hidden -fvisibility=hidden)
+project(Selectors CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(selectors SHARED SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp)
-set_target_properties(selectors PROPERTIES LINK_FLAGS -flto)
+set_target_properties(selectors
+    PROPERTIES
+        INTERPROCEDURAL_OPTIMIZATION on
+        COMPILE_FLAGS "-fvisibility-inlines-hidden -fvisibility=hidden")
 
 add_executable(selector_tests SelectorTests.cpp)
 target_link_libraries(selector_tests selectors)
-
-set_target_properties(selectors selector_tests PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED yes)
-

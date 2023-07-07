@@ -26,7 +26,7 @@
 
 #include <iosfwd>
 #include <memory>
-#include <string>
+#include <string_view>
 
 namespace selector {
 
@@ -34,13 +34,13 @@ class Env;
 
 class Expression {
 public:
-    virtual ~Expression() {};
+    virtual ~Expression() noexcept = 0;
     virtual void repr(std::ostream&) const = 0;
     virtual Value eval(const Env&) const = 0;
     virtual BoolOrNone eval_bool(const Env&) const = 0;
 };
 
-__attribute__((visibility("default"))) std::unique_ptr<Expression> make_selector(const std::string& exp);
+__attribute__((visibility("default"))) std::unique_ptr<Expression> make_selector(std::string_view exp);
 __attribute__((visibility("default"))) bool eval(const Expression&, const Env&);
 __attribute__((visibility("default"))) std::ostream& operator<<(std::ostream&, const Expression&);
 }

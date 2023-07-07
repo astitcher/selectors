@@ -25,10 +25,12 @@
 #include <cstdint>
 #include <iosfwd>
 #include <string>
+#include <string_view>
+#include <variant>
 
 namespace selector {
 
-enum BoolOrNone {
+enum BoolOrNone : uint8_t {
     BN_FALSE = false,
     BN_TRUE = true,
     BN_UNKNOWN
@@ -39,13 +41,8 @@ enum BoolOrNone {
 // is responsible for managing its lifetime.
 class Value {
 public:
-    union {
-        bool               b;
-        int64_t            i;
-        double             x;
-        const std::string* s;
-    };
-    enum {
+    std::variant<bool, int64_t, double, std::string_view> value;
+    enum : uint8_t {
         T_UNKNOWN,
         T_BOOL,
         T_STRING,
@@ -53,53 +50,59 @@ public:
         T_INEXACT
     } type;
 
-    // Default copy contructor
-    // Default assignment operator
-    // Default destructor
-    Value() :
+    Value(const Value&) = default;
+    Value& operator=(const Value&) = default;
+    ~Value() noexcept = default;
+
+    constexpr Value() :
         type(T_UNKNOWN)
     {}
 
-    Value(const std::string& s0) :
-        s(&s0),
+    constexpr Value(std::string_view s0) :
+        value(s0),
         type(T_STRING)
     {}
 
-    Value(const int64_t i0) :
-        i(i0),
+    constexpr Value(const int64_t i0) :
+        value(i0),
         type(T_EXACT)
     {}
 
-    Value(const int32_t i0) :
-        i(i0),
+    constexpr Value(const int32_t i0) :
+        value(i0),
         type(T_EXACT)
     {}
 
-    Value(const double x0) :
-        x(x0),
+    constexpr Value(const double x0) :
+        value(x0),
         type(T_INEXACT)
     {}
 
-    Value(bool b0) :
-        b(b0),
+    constexpr Value(bool b0) :
+        value(b0),
         type(T_BOOL)
     {}
 
-    Value(BoolOrNone bn) :
-        b(bn),
+    constexpr Value(BoolOrNone bn) :
+        value((bool)bn),
         type(bn==BN_UNKNOWN ? T_UNKNOWN : T_BOOL)
     {}
+
+    constexpr operator BoolOrNone() {
+        if (type == T_BOOL) return BoolOrNone{std::get<bool>(value)};
+        else return BN_UNKNOWN;
+    }
 };
 
-inline bool unknown(const Value& v) {
+inline constexpr bool unknown(const Value& v) {
     return v.type == Value::T_UNKNOWN;
 }
 
-inline bool numeric(const Value& v) {
+inline constexpr bool numeric(const Value& v) {
     return v.type == Value::T_EXACT || v.type == Value::T_INEXACT;
 }
 
-inline bool sameType(const Value& v1, const Value& v2) {
+inline constexpr bool sameType(const Value& v1, const Value& v2) {
     return v1.type == v2.type;
 }
 

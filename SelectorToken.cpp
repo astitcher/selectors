@@ -21,17 +21,20 @@
 
 #include "SelectorToken.h"
 
-#include <string>
 #include <algorithm>
-#include <iostream>
 #include <cassert>
 #include <cctype>
+#include <iostream>
+#include <string>
+#include <string_view>
+
+using namespace std::literals;
 
 namespace selector {
 
-// Tokenisers always take string const_iterators to mark the beginning and end of the string being tokenised
-// if the tokenise is successful then the start iterator is advanced, if the tokenise fails then the start
-// iterator is unchanged.
+// Tokenisers always take string_views to mark the beginning and end of the string being tokenised
+// if the tokenise is successful then the beginning of the string_view is advanced, if the tokenise fails then the
+// beginning of the string_view is unchanged.
 
 std::ostream& operator<<(std::ostream& os, const Token& t)
 {
@@ -105,26 +108,27 @@ bool tokeniseReservedWord(Token& tok)
 }
 
 // parsing strings is complicated by the need to allow embedded quotes by doubling the quote character
-bool processString(std::string::const_iterator& s, std::string::const_iterator& e, char quoteChar, TokenType type, Token& tok)
+bool processString(std::string_view& sv, char quoteChar, TokenType type, Token& tok)
 {
     // We only get here once the tokeniser recognises the initial quote for a string
     // so we don't need to check for it again.
-    std::string::const_iterator q = std::find(s+1, e, quoteChar);
+    auto e = sv.cend();
+    auto q = std::find(sv.cbegin()+1, e, quoteChar);
     if ( q==e ) return false;
 
-    std::string content(s+1, q);
+    std::string content(sv.cbegin()+1, q);
     ++q;
 
     while ( q!=e && *q==quoteChar ) {
-        std::string::const_iterator p = q;
+        auto p = q;
         q = std::find(p+1, e, quoteChar);
         if ( q==e ) return false;
         content += std::string(p, q);
         ++q;
     }
 
-    tok = Token(type, s, content);
-    s = q;
+    tok = Token(type, content);
+    sv.remove_prefix(q - sv.cbegin());
     return true;
 }
 
@@ -138,9 +142,11 @@ inline bool isIdentifierPart(char c)
     return std::isalnum(c) || c=='_' || c=='$' || c=='.';
 }
 
-bool tokenise(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok)
+bool tokenise(std::string_view& sv, Token& tok)
 {
-    std::string::const_iterator t = s;
+    auto t = sv.cbegin();
+    auto e = sv.cend();
+    //auto t = s;
 
     // Hand constructed state machine recogniser
     enum {
@@ -168,8 +174,8 @@ bool tokenise(std::string::const_iterator& s, std::string::const_iterator& e, To
     while (true)
     switch (state) {
     case START:
-        if (t==e) {tok = Token(T_EOS, s, "<END>"); return true;}
-        else if (std::isspace(*t)) {++t; ++s; continue;}
+        if (t==e) {tok = Token(T_EOS, "<END>"); return true;}
+        else if (std::isspace(*t)) {++t; sv.remove_prefix(1); continue;}
         else switch (*t) {
         case '(': tokType = T_LPAREN; state = ACCEPT_INC; continue;
         case ')': tokType = T_RPAREN; state = ACCEPT_INC; continue;
@@ -195,8 +201,8 @@ bool tokenise(std::string::const_iterator& s, std::string::const_iterator& e, To
             break;
         }
         if (isIdentifierStart(*t)) {++t; state = IDENTIFIER;}
-        else if (*t=='\'') {return processString(s, e, '\'', T_STRING, tok);}
-        else if (*t=='\"') {return processString(s, e, '\"', T_IDENTIFIER, tok);}
+        else if (*t=='\'') {return processString(sv, '\'', T_STRING, tok);}
+        else if (*t=='\"') {return processString(sv, '\"', T_IDENTIFIER, tok);}
         else if (*t=='0') {++t; state = ZERO;}
         else if (std::isdigit(*t)) {++t; state = DIGIT;}
         else if (*t=='.') {++t; state = DECIMAL_START;}
@@ -283,25 +289,28 @@ bool tokenise(std::string::const_iterator& s, std::string::const_iterator& e, To
         continue;
     case ACCEPT_INC:
         ++t;
-    case ACCEPT_NOINC:
-        tok = Token(tokType, s, t);
-        s = t;
+    case ACCEPT_NOINC: {
+        std::string_view::size_type l = t-sv.cbegin();
+        tok = Token(tokType, std::string_view{sv.cbegin(), l});
+        sv.remove_prefix(l);
         return true;
-    case ACCEPT_IDENTIFIER:
-        tok = Token(T_IDENTIFIER, s, t);
-        s = t;
+    }
+    case ACCEPT_IDENTIFIER: {
+        std::string_view::size_type l = t-sv.cbegin();
+        tok = Token(T_IDENTIFIER, std::string_view{sv.cbegin(), l});
+        sv.remove_prefix(l);
         tokeniseReservedWord(tok);
         return true;
+    }
     case REJECT:
         return false;
     };
 }
 
-Tokeniser::Tokeniser(const std::string::const_iterator& s, const std::string::const_iterator& e) :
+Tokeniser::Tokeniser(std::string_view input0) :
     tokp(0),
-    inStart(s),
-    inp(s),
-    inEnd(e)
+    input(input0),
+    inp(input.cbegin())
 {
 }
 
@@ -322,7 +331,7 @@ const Token& Tokeniser::nextToken()
     tokens.push_back(Token());
     Token& tok = tokens[tokp++];
 
-    if (tokenise(inp, inEnd, tok)) return tok;
+    if (tokenise(input, tok)) return tok;
 
     throw TokenException("Found illegal character");
 }
@@ -333,10 +342,9 @@ void Tokeniser::returnTokens(unsigned int n)
     tokp-=n;
 }
 
-std::string Tokeniser::remaining()
+std::string_view Tokeniser::remaining()
 {
-    Token& currentTok = tokens[tokp];
-    return std::string(currentTok.tokenStart, inEnd);
+    return input;
 }
 
 

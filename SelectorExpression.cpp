@@ -32,6 +32,7 @@
 #include <ostream>
 #include <regex>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <sstream>
 #include <vector>
@@ -40,6 +41,7 @@ using std::enable_if;
 using std::make_unique;
 using std::ostream;
 using std::string;
+using std::string_view;
 using std::ostringstream;
 using std::unique_ptr;
 using std::vector;
@@ -242,12 +244,10 @@ constexpr auto grOp   = ComparisonOperator{">",  operator>};
 constexpr auto lseqOp = ComparisonOperator{"<=", operator<=};
 constexpr auto greqOp = ComparisonOperator{">=", operator>=};
 
-// Can't use lambdas as they won't work with constexpr in C++14
-BoolOrNone isNullOpEval(const Value& v){return BoolOrNone(unknown(v));};
-BoolOrNone isNonNullOpEval(const Value& v){return BoolOrNone(!unknown(v));};
-
-constexpr auto isNullOp    = UnaryBooleanOperator{"IsNull", isNullOpEval};
-constexpr auto isNonNullOp = UnaryBooleanOperator{"IsNonNull", isNonNullOpEval};
+constexpr auto isNullOp    = UnaryBooleanOperator{"IsNull",
+    [](const Value& v){return BoolOrNone(unknown(v));}};
+constexpr auto isNonNullOp = UnaryBooleanOperator{"IsNonNull",
+    [](const Value& v){return BoolOrNone(!unknown(v));}};
 constexpr auto notOp       = UnaryBooleanOperator{"NOT", operator!};
 
 constexpr auto add  = ArithmeticOperator{"+", operator+};
@@ -261,22 +261,22 @@ constexpr auto negate = UnaryArithmeticOperator{"-", operator-};
 
 // Expressions...
 
+Expression::~Expression() noexcept = default;
+
 class ValueExpression : public Expression {
 public:
-  virtual ~ValueExpression() {}
+  virtual ~ValueExpression() noexcept = default;
   virtual void repr(ostream&) const = 0;
   virtual Value eval(const Env&) const = 0;
   
   virtual BoolOrNone eval_bool(const Env& env) const {
-    Value v = eval(env);
-    if (v.type==Value::T_BOOL) return BoolOrNone(v.b);
-    else return BN_UNKNOWN;
+    return eval(env);
   }
 };
 
 class BoolExpression : public ValueExpression {
 public:
-  virtual ~BoolExpression() {}
+  virtual ~BoolExpression() noexcept = default;
   virtual void repr(ostream&) const = 0;
   virtual BoolOrNone eval_bool(const Env&) const = 0;
   
@@ -456,7 +456,8 @@ public:
     BoolOrNone eval_bool(const Env& env) const {
         Value v(e->eval(env));
         if ( v.type!=Value::T_STRING ) return BN_UNKNOWN;
-        return BoolOrNone(std::regex_match(*v.s, regexBuffer));
+        auto sv = std::get<string_view>(v.value);
+        return BoolOrNone(std::regex_match(sv.cbegin(), sv.cend(), regexBuffer));
     }
 };
 
@@ -491,10 +492,9 @@ class InExpression : public BoolExpression {
 
 public:
     InExpression(unique_ptr<ValueExpression> e_, vector<unique_ptr<ValueExpression>>&& l_) :
-        e(std::move(e_))
-    {
-        l.swap(l_);
-    }
+        e(std::move(e_)),
+        l(std::move(l_))
+    {}
 
     void repr(ostream& os) const {
         os << *e << " IN (";
@@ -525,10 +525,9 @@ class NotInExpression : public BoolExpression {
 
 public:
     NotInExpression(unique_ptr<ValueExpression> e_, vector<unique_ptr<ValueExpression>>&& l_) :
-        e(std::move(e_))
-    {
-        l.swap(l_);
-    }
+        e(std::move(e_)),
+        l(std::move(l_))
+    {}
 
     void repr(ostream& os) const {
         os << *e << " NOT IN (";
@@ -628,7 +627,7 @@ class StringLiteral : public ValueExpression {
     const string value;
 
 public:
-    StringLiteral(const string& v) :
+    StringLiteral(string_view v) :
         value(v)
     {}
 
@@ -637,7 +636,7 @@ public:
     }
 
     Value eval(const Env&) const {
-        return value;
+        return string_view{value};
     }
 };
 
@@ -930,11 +929,9 @@ static unique_ptr<ValueExpression> primaryExpression(Tokeniser& tokeniser)
 ///////////////////////////////////////////////////////////
 
 // Top level parser
-unique_ptr<Expression> make_selector(const string& exp)
+unique_ptr<Expression> make_selector(string_view exp)
 {
-    auto s = exp.cbegin();
-    auto e = exp.cend();
-    auto tokeniser = Tokeniser{s,e};
+    auto tokeniser = Tokeniser{exp};
     return Parse::selectorExpression(tokeniser);
 }
 

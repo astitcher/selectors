@@ -22,9 +22,13 @@
 #include "SelectorValue.h"
 
 #include <cassert>
+#include <cstdint>
 #include <ostream>
 
+using std::boolalpha;
+using std::get;
 using std::ostream;
+using std::string_view;
 
 namespace selector {
 
@@ -32,10 +36,10 @@ ostream& operator<<(ostream& os, const Value& v)
 {
     switch (v.type) {
     case Value::T_UNKNOWN: os << "UNKNOWN"; break;
-    case Value::T_BOOL: os << "BOOL:" << std::boolalpha << v.b; break;
-    case Value::T_EXACT: os << "EXACT:" << v.i; break;
-    case Value::T_INEXACT: os << "APPROX:" << v.x; break;
-    case Value::T_STRING: os << "STRING:'" << *v.s << "'"; break;
+    case Value::T_BOOL: os << "BOOL:" << boolalpha << get<bool>(v.value); break;
+    case Value::T_EXACT: os << "EXACT:" << get<int64_t>(v.value); break;
+    case Value::T_INEXACT: os << "APPROX:" << get<double>(v.value); break;
+    case Value::T_STRING: os << "STRING:'" << get<string_view>(v.value) << "'"; break;
     };
     return os;
 }
@@ -45,8 +49,8 @@ inline void promoteNumeric(Value& v1, Value& v2)
     if (!numeric(v1) || !numeric(v2)) return;
     if (sameType(v1,v2)) return;
     switch (v1.type) {
-    case Value::T_INEXACT: v2 = double(v2.i); return;
-    case Value::T_EXACT:   v1 = double(v1.i); return;
+    case Value::T_INEXACT: v2 = double(get<int64_t>(v2.value)); return;
+    case Value::T_EXACT:   v1 = double(get<int64_t>(v1.value)); return;
     default:               assert(false);
     }
 }
@@ -56,13 +60,7 @@ bool operator==(Value v1, Value v2)
     promoteNumeric(v1, v2);
     if (!sameType(v1,v2)) return false;
 
-    switch (v1.type) {
-    case Value::T_BOOL:    return  v1.b == v2.b;
-    case Value::T_STRING:  return *v1.s == *v2.s;
-    case Value::T_EXACT:   return  v1.i == v2.i;
-    case Value::T_INEXACT: return  v1.x == v2.x;
-    default:               return false;
-    }
+    return v1.value == v2.value;
 }
 
 bool operator!=(Value v1, Value v2)
@@ -70,13 +68,7 @@ bool operator!=(Value v1, Value v2)
     promoteNumeric(v1, v2);
     if (!sameType(v1,v2)) return false;
 
-    switch (v1.type) {
-    case Value::T_BOOL:    return  v1.b != v2.b;
-    case Value::T_STRING:  return *v1.s != *v2.s;
-    case Value::T_EXACT:   return  v1.i != v2.i;
-    case Value::T_INEXACT: return  v1.x != v2.x;
-    default:               return false;
-    }
+    return v1.value != v2.value;
 }
 
 bool operator<(Value v1, Value v2)
@@ -84,9 +76,11 @@ bool operator<(Value v1, Value v2)
     promoteNumeric(v1, v2);
 
     switch (v1.type) {
-    case Value::T_EXACT:   return v1.i < v2.i;
-    case Value::T_INEXACT: return v1.x < v2.x;
-    default:               break;
+    case Value::T_EXACT:
+    case Value::T_INEXACT:
+        return v1.value < v2.value;
+    default:
+        break;
     }
     return false;
 }
@@ -96,9 +90,11 @@ bool operator>(Value v1, Value v2)
     promoteNumeric(v1, v2);
 
     switch (v1.type) {
-    case Value::T_EXACT:   return v1.i > v2.i;
-    case Value::T_INEXACT: return v1.x > v2.x;
-    default:               break;
+    case Value::T_EXACT:
+    case Value::T_INEXACT:
+        return v1.value > v2.value;
+    default:
+        break;
     }
     return false;
 }
@@ -108,9 +104,11 @@ bool operator<=(Value v1, Value v2)
     promoteNumeric(v1, v2);
 
     switch (v1.type) {
-    case Value::T_EXACT:   return v1.i <= v2.i;
-    case Value::T_INEXACT: return v1.x <= v2.x;
-    default:               break;
+    case Value::T_EXACT:
+    case Value::T_INEXACT:
+        return v1.value <= v2.value;
+    default:
+        break;
     }
     return false;
 }
@@ -120,9 +118,11 @@ bool operator>=(Value v1, Value v2)
     promoteNumeric(v1, v2);
 
     switch (v1.type) {
-    case Value::T_EXACT:   return v1.i >= v2.i;
-    case Value::T_INEXACT: return v1.x >= v2.x;
-    default:               break;
+    case Value::T_EXACT:
+    case Value::T_INEXACT:
+        return v1.value >= v2.value;
+    default:
+        break;
     }
     return false;
 }
@@ -130,8 +130,10 @@ bool operator>=(Value v1, Value v2)
 BoolOrNone operator!(const Value& v)
 {
     switch (v.type) {
-    case Value::T_BOOL:    return BoolOrNone(!v.b);
-    default:               break;
+    case Value::T_BOOL:
+        return BoolOrNone(!get<bool>(v.value));
+    default:
+        break;
     }
     return BN_UNKNOWN;
 }
@@ -141,9 +143,12 @@ Value operator+(Value v1, Value v2)
     promoteNumeric(v1, v2);
 
     switch (v1.type) {
-    case Value::T_EXACT:   return v1.i + v2.i;
-    case Value::T_INEXACT: return v1.x + v2.x;
-    default:               break;
+    case Value::T_EXACT:
+        return get<int64_t>(v1.value) + get<int64_t>(v2.value);
+    case Value::T_INEXACT:
+        return get<double>(v1.value) + get<double>(v2.value);
+    default:
+        break;
     }
     return Value();
 }
@@ -153,9 +158,12 @@ Value operator-(Value v1, Value v2)
     promoteNumeric(v1, v2);
 
     switch (v1.type) {
-    case Value::T_EXACT:   return v1.i - v2.i;
-    case Value::T_INEXACT: return v1.x - v2.x;
-    default:               break;
+    case Value::T_EXACT:
+        return get<int64_t>(v1.value) - get<int64_t>(v2.value);
+    case Value::T_INEXACT:
+        return get<double>(v1.value) - get<double>(v2.value);
+    default:
+        break;
     }
     return Value();
 }
@@ -165,9 +173,12 @@ Value operator*(Value v1, Value v2)
     promoteNumeric(v1, v2);
 
     switch (v1.type) {
-    case Value::T_EXACT:   return v1.i * v2.i;
-    case Value::T_INEXACT: return v1.x * v2.x;
-    default:               break;
+    case Value::T_EXACT:
+        return get<int64_t>(v1.value) * get<int64_t>(v2.value);
+    case Value::T_INEXACT:
+        return get<double>(v1.value) * get<double>(v2.value);
+    default:
+        break;
     }
     return Value();
 }
@@ -177,9 +188,12 @@ Value operator/(Value v1, Value v2)
     promoteNumeric(v1, v2);
 
     switch (v1.type) {
-    case Value::T_EXACT:   return v1.i / v2.i;
-    case Value::T_INEXACT: return v1.x / v2.x;
-    default:               break;
+    case Value::T_EXACT:
+        return get<int64_t>(v1.value) / get<int64_t>(v2.value);
+    case Value::T_INEXACT:
+        return get<double>(v1.value) / get<double>(v2.value);
+    default:
+        break;
     }
     return Value();
 }
@@ -187,9 +201,12 @@ Value operator/(Value v1, Value v2)
 Value operator-(const Value& v)
 {
     switch (v.type) {
-    case Value::T_EXACT:   return -v.i;
-    case Value::T_INEXACT: return -v.x;
-    default:               break;
+    case Value::T_EXACT:
+        return -get<int64_t>(v.value);
+    case Value::T_INEXACT:
+        return -get<double>(v.value);
+    default:
+        break;
     }
     return Value();
 }

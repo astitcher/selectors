@@ -26,71 +26,89 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
-using std::make_unique;
+using std::get;
 using std::string;
+using std::string_view;
 using std::unordered_map;
 using std::unique_ptr;
 using std::vector;
 
+using namespace std::literals;
+
 namespace selector::tests {
 
-typedef bool (*TokeniseF)(string::const_iterator&,string::const_iterator&,Token&);
+typedef bool (*TokeniseF)(string_view&,Token&);
 
-bool tokeniseEos(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok)
-{
+template <typename F>
+bool tokeniserCheck(string_view& sv, Token& tok, F f) {
     Token t1;
-    std::string::const_iterator t = s;
-    bool r = tokenise(t, e, t1);
-    if (r && (t1.type==selector::T_EOS)) {tok = t1; s = t; return true;}
+    auto sv1 = sv;
+    bool r = tokenise(sv1, t1);
+    if (r && f(t1.type)) {tok = t1; sv = sv1; return true;}
     return false;
 }
 
-bool tokeniseParens(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok)
+bool tokeniseEos(string_view& sv, Token& tok)
 {
-    Token t1;
-    std::string::const_iterator t = s;
-    bool r = tokenise(t, e, t1);
-    if (r && (t1.type==selector::T_LPAREN || t1.type==selector::T_RPAREN)) {tok = t1; s = t; return true;}
-    return false;
+    return tokeniserCheck(
+        sv, tok, 
+        [](TokenType t) -> bool {
+            return t==selector::T_EOS;
+        }
+    );
 }
 
-bool tokeniseOperator(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok)
+bool tokeniseParens(string_view& sv, Token& tok)
 {
-    Token t1;
-    std::string::const_iterator t = s;
-    bool r = tokenise(t, e, t1);
-    if (r && (t1.type>=selector::T_PLUS && t1.type<=selector::T_GREQ)) {tok = t1; s = t; return true;}
-    return false;
+    return tokeniserCheck(
+        sv, tok, 
+        [](TokenType t) -> bool {
+            return t==selector::T_LPAREN || t==selector::T_RPAREN;
+        }
+    );
 }
 
-bool tokeniseString(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok)
+bool tokeniseOperator(string_view& sv, Token& tok)
 {
-    Token t1;
-    std::string::const_iterator t = s;
-    bool r = tokenise(t, e, t1);
-    if (r && (t1.type==selector::T_STRING)) {tok = t1; s = t; return true;}
-    return false;
+    return tokeniserCheck(
+        sv, tok, 
+        [](TokenType t) -> bool {
+            return t>=selector::T_PLUS && t<=selector::T_GREQ;
+        }
+    );
 }
 
-bool tokeniseIdentifier(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok)
+bool tokeniseString(string_view& sv, Token& tok)
 {
-    Token t1;
-    std::string::const_iterator t = s;
-    bool r = tokenise(t, e, t1);
-    if (r && (t1.type==selector::T_IDENTIFIER)) {tok = t1; s = t; return true;}
-    return false;
+    return tokeniserCheck(
+        sv, tok, 
+        [](TokenType t) -> bool {
+            return t==selector::T_STRING;
+        }
+    );
 }
 
-bool tokeniseReservedWord(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok)
+bool tokeniseIdentifier(string_view& sv, Token& tok)
 {
-    std::string::const_iterator t = s;
+    return tokeniserCheck(
+        sv, tok, 
+        [](TokenType t) -> bool {
+            return t==selector::T_IDENTIFIER;
+        }
+    );
+}
+
+bool tokeniseReservedWord(string_view& sv, Token& tok)
+{
+    auto sv1 = sv;
     Token t1;
-    if (tokenise(t, e, t1)) {
+    if (tokenise(sv1, t1)) {
     switch (t1.type) {
     case selector::T_AND:
     case selector::T_BETWEEN:
@@ -104,7 +122,7 @@ bool tokeniseReservedWord(std::string::const_iterator& s, std::string::const_ite
     case selector::T_OR:
     case selector::T_TRUE:
         tok = t1;
-        s = t;
+        sv = sv1;
         return true;
     default:
         break;
@@ -113,33 +131,32 @@ bool tokeniseReservedWord(std::string::const_iterator& s, std::string::const_ite
     return false;
 }
 
-bool tokeniseNumeric(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok)
+bool tokeniseNumeric(string_view& sv, Token& tok)
 {
-    Token t1;
-    std::string::const_iterator t = s;
-    bool r = tokenise(t, e, t1);
-    if (r && (t1.type==selector::T_NUMERIC_EXACT || t1.type==selector::T_NUMERIC_APPROX)) {tok = t1; s = t; return true;}
-    return false;
+    return tokeniserCheck(
+        sv, tok, 
+        [](TokenType t) -> bool {
+            return t==selector::T_NUMERIC_EXACT || t==selector::T_NUMERIC_APPROX;
+        }
+    );
 }
 
 
 void verifyTokeniserSuccess(TokeniseF t, const char* ss, TokenType tt, const char* tv, const char* fs) {
     Token tok;
-    string s(ss);
-    string::const_iterator sb = s.begin();
-    string::const_iterator se = s.end();
-    CHECK(t(sb, se, tok));
+    string s{ss};
+    string_view sv{s};
+    CHECK(t(sv, tok));
     CHECK(tok == Token(tt, tv));
-    CHECK(string(sb, se) == fs);
+    CHECK(string(sv) == fs);
 }
 
 void verifyTokeniserFail(TokeniseF t, const char* c) {
     Token tok;
-    string s(c);
-    string::const_iterator sb = s.begin();
-    string::const_iterator se = s.end();
-    CHECK(!t(sb, se, tok));
-    CHECK(string(sb, se) == c);
+    string s{c};
+    string_view sv{s};
+    CHECK(!t(sv, tok));
+    CHECK(string(sv) == c);
 }
 
 TEST_CASE( "Selectors" ) {
@@ -214,7 +231,7 @@ SECTION("tokenString")
 {
 
     string exp("  a =b");
-    Tokeniser t(exp.cbegin(), exp.cend());
+    Tokeniser t(exp);
 
     CHECK(t.nextToken() == Token(selector::T_IDENTIFIER, "a"));
     CHECK(t.nextToken() == Token(selector::T_EQUAL, "="));
@@ -223,7 +240,7 @@ SECTION("tokenString")
 
     exp = " not 'hello kitty''s friend' = Is null       ";
 
-    Tokeniser u(exp.cbegin(), exp.cend());
+    Tokeniser u(exp);
 
     CHECK(u.nextToken() == Token(selector::T_NOT, "not"));
     CHECK(u.nextToken() == Token(selector::T_STRING, "hello kitty's friend"));
@@ -240,7 +257,7 @@ SECTION("tokenString")
     CHECK(u.nextToken() == Token(selector::T_EOS, ""));
 
     exp = "(a+6)*7.5/1e6";
-    Tokeniser v(exp.cbegin(), exp.cend());
+    Tokeniser v(exp);
 
     CHECK(v.nextToken() == Token(selector::T_LPAREN, "("));
     CHECK(v.nextToken() == Token(selector::T_IDENTIFIER, "a"));
@@ -330,13 +347,13 @@ SECTION("parseString")
     CHECK_NOTHROW(test_selector("A IN ('hello', 'there', 1 , true, (1-17))"));
 }
 
-static const selector::Value EMPTY{};
+static constexpr selector::Value EMPTY{};
 
 class TestSelectorEnv : public Env {
     mutable unordered_map<string, selector::Value> values;
-    vector<unique_ptr<string>> strings;
+    vector<string> strings;
 
-    const selector::Value& value(const string& v) const override {
+    const selector::Value& value(string_view v) const override {
         auto s = string{v};
         const selector::Value& r = values.find(s)!=values.end() ? values[s] : EMPTY;
         INFO("  Lookup: " << v << " -> " << r);
@@ -344,14 +361,14 @@ class TestSelectorEnv : public Env {
     }
 
 public:
-    void set(const string& id, const char* value) {
-        strings.push_back(make_unique<string>(value));
-        values[id] = *strings[strings.size()-1];
+    void set(const string& id, string_view value) {
+        strings.push_back(string{value});
+        values[id] = string_view{strings[strings.size()-1]};
     }
 
     void set(const string& id, const selector::Value& value) {
         if (value.type==selector::Value::T_STRING) {
-            set(id, value.s);
+            set(id, get<string_view>(value.value));
         } else {
             values[id] = value;
         }
@@ -367,8 +384,8 @@ auto eval_selector = [&test_selector](const string& s, const TestSelectorEnv& e)
 SECTION("simpleEval")
 {
     TestSelectorEnv env;
-    env.set("A", "Bye, bye cruel world");
-    env.set("B", "hello kitty");
+    env.set("A", "Bye, bye cruel world"sv);
+    env.set("B", "hello kitty"sv);
 
     CHECK(eval_selector("", env));
     CHECK(eval_selector(" ", env));

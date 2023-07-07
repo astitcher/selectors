@@ -64,26 +64,13 @@ typedef enum {
 struct Token {
     TokenType type;
     std::string val;
-    std::string::const_iterator tokenStart;
 
     Token()
     {}
 
-    Token(TokenType t, const std::string& v) :
+    Token(TokenType t, std::string_view v) :
         type(t),
         val(v)
-    {}
-
-    Token(TokenType t, const std::string::const_iterator& s, const std::string& v) :
-        type(t),
-        val(v),
-        tokenStart(s)
-    {}
-
-    Token(TokenType t, const std::string::const_iterator& s, const std::string::const_iterator& e) :
-        type(t),
-        val(std::string(s,e)),
-        tokenStart(s)
     {}
 
     bool operator==(const Token& r) const
@@ -105,22 +92,21 @@ public:
 
 
 __attribute__((visibility("default")))
-bool tokenise(std::string::const_iterator& s, std::string::const_iterator& e, Token& tok);
+bool tokenise(std::string_view& sv, Token& tok);
 
 class
 Tokeniser {
     std::vector<Token> tokens;
     unsigned int tokp;
 
-    std::string::const_iterator inStart;
-    std::string::const_iterator inp;
-    std::string::const_iterator inEnd;
+    std::string_view input;
+    std::string_view::const_iterator inp;
 
 public:
-    __attribute__((visibility("default"))) Tokeniser(const std::string::const_iterator& s, const std::string::const_iterator& e);
+    __attribute__((visibility("default"))) Tokeniser(std::string_view input);
     __attribute__((visibility("default"))) void returnTokens(unsigned int n = 1);
     __attribute__((visibility("default"))) const Token& nextToken();
-    __attribute__((visibility("default"))) std::string remaining();
+    __attribute__((visibility("default"))) std::string_view remaining();
 };
 
 }
