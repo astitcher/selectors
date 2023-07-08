@@ -19,7 +19,12 @@
 
 cmake_minimum_required(VERSION 3.25)
 
-project(Selectors CXX)
+project(Selectors LANGUAGES CXX VERSION 0.1)
+
+include(CTest)
+
+find_package(Catch2 REQUIRED)
+include(Catch)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -32,4 +37,6 @@ set_target_properties(selectors
         COMPILE_FLAGS "-fvisibility-inlines-hidden -fvisibility=hidden")
 
 add_executable(selector_tests SelectorTests.cpp)
-target_link_libraries(selector_tests selectors)
+target_link_libraries(selector_tests PRIVATE selectors Catch2::Catch2)
+
+catch_discover_tests(selector_tests)

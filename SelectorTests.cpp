@@ -159,7 +159,7 @@ void verifyTokeniserFail(TokeniseF t, const char* c) {
     CHECK(string(sv) == c);
 }
 
-TEST_CASE( "Selectors" ) {
+TEST_CASE( "Selector Tokeniser" ) {
 
 SECTION("tokeniseSuccess")
 {
@@ -270,7 +270,9 @@ SECTION("tokenString")
     CHECK(v.nextToken() == Token(selector::T_NUMERIC_APPROX, "1e6"));
 }
 
-auto test_selector = [](const string& s) -> unique_ptr<Expression>
+}
+
+auto test_selector(const string& s) -> unique_ptr<Expression>
 {
   INFO("String: " << s << " -> ");
   try {
@@ -286,6 +288,8 @@ auto test_selector = [](const string& s) -> unique_ptr<Expression>
       throw;
   }
 };
+
+TEST_CASE ("Selector Parser") {
 
 SECTION("parseStringFail")
 {
@@ -347,6 +351,8 @@ SECTION("parseString")
     CHECK_NOTHROW(test_selector("A IN ('hello', 'there', 1 , true, (1-17))"));
 }
 
+}
+
 static constexpr selector::Value EMPTY{};
 
 class TestSelectorEnv : public Env {
@@ -375,11 +381,13 @@ public:
     }
 };
 
-auto eval_selector = [&test_selector](const string& s, const TestSelectorEnv& e) -> bool
+auto eval_selector(const string& s, const TestSelectorEnv& e) -> bool
 {
     auto exp = test_selector(s);
     return eval(*exp, e);
 };
+
+TEST_CASE( "Selector Eval") {
 
 SECTION("simpleEval")
 {
