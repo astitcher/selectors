@@ -30,7 +30,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(selectors SHARED SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp)
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+
+add_library(selectors SHARED SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp selectors.cpp)
 set_target_properties(selectors
     PROPERTIES
         INTERPROCEDURAL_OPTIMIZATION on

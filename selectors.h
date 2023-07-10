@@ -1,3 +1,5 @@
+#ifndef SELECTORS_H
+#define SELECTORS_H
 // C Interface to selector library
 
 #include <stdbool.h>
@@ -11,13 +13,8 @@ typedef struct selector_expression_t selector_expression_t;
 typedef struct selector_value_t selector_value_t;
 typedef struct selector_environment_t selector_environment_t;
 
-struct selector_environment_t {
-    void (*free)();
-    const selector_value_t* (*value)(const char* id);
-};
-
 __attribute__((visibility("default"))) const selector_expression_t* selector_expression(const char* exp);
-__attribute__((visibility("default"))) void selector_expression_free(const char* exp);
+__attribute__((visibility("default"))) void selector_expression_free(const selector_expression_t* exp);
 __attribute__((visibility("default"))) bool selector_expression_eval(const selector_expression_t* exp, const selector_environment_t* env);
 __attribute__((visibility("default"))) void selector_expression_dump(const selector_expression_t* exp);
 
@@ -29,6 +26,12 @@ __attribute__((visibility("default"))) const selector_value_t* selector_value_st
 __attribute__((visibility("default"))) void selector_value_free(const selector_value_t* v);
 __attribute__((visibility("default"))) void selector_value_dump(const selector_value_t* v);
 
+__attribute__((visibility("default"))) selector_environment_t* selector_environment(const char* env);
+__attribute__((visibility("default"))) void selector_environment_free(const selector_environment_t* env);
+__attribute__((visibility("default"))) void selector_environment_set(const selector_environment_t* env, const char *var, const selector_value_t* val);
+
 #ifdef __cplusplus
 };
+#endif
+
 #endif

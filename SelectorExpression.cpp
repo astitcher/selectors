@@ -949,16 +949,3 @@ std::ostream& operator<<(std::ostream& o, const Expression& e)
 }
 
 }
-
-///////////////////////////////////////////////////////////
-
-// C interfaces
-struct selector_expression_t : selector::Expression {};
-
-const selector_expression_t* selector_expression(const char* exp) {
-    return static_cast<selector_expression_t*>(selector::make_selector(exp).release());
-}
-
-void selector_expression_free(const selector_expression_t* exp) {
-    delete exp;
-}
