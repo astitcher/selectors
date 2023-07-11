@@ -356,28 +356,19 @@ SECTION("parseString")
 static constexpr selector::Value EMPTY{};
 
 class TestSelectorEnv : public Env {
-    mutable unordered_map<string, selector::Value> values;
+    unordered_map<string_view, selector::Value> values;
     vector<string> strings;
 
     const selector::Value& value(string_view v) const override {
-        auto s = string{v};
-        const selector::Value& r = values.find(s)!=values.end() ? values[s] : EMPTY;
+        auto i = values.find(v);
+        const selector::Value& r = i!=values.end() ? i->second : EMPTY;
         INFO("  Lookup: " << v << " -> " << r);
         return r;
     }
 
 public:
-    void set(const string& id, string_view value) {
-        strings.push_back(string{value});
-        values[id] = string_view{strings[strings.size()-1]};
-    }
-
-    void set(const string& id, const selector::Value& value) {
-        if (value.type()==selector::Value::T_STRING) {
-            set(id, get<string_view>(value.value));
-        } else {
-            values[id] = value;
-        }
+    void set(string_view id, const selector::Value& value) {
+        values[id] = value;
     }
 };
 
