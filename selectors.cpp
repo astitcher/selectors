@@ -28,6 +28,7 @@
 
 #include <iostream>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -35,6 +36,7 @@
 
 using std::string;
 using std::string_view;
+using std::unique_ptr;
 using std::unordered_map;
 using std::unordered_set;
 
@@ -47,19 +49,18 @@ struct selector_value_t : selector::Value {};
 auto constexpr EMPTY = selector::Value{};
 
 struct selector_environment_t : selector::Env {
-    unordered_map<string_view, selector::Value> values;
+    unordered_map<string_view, unique_ptr<const selector::Value>> values;
 
-    const selector::Value & value(const string_view sv) const override {
+    const selector::Value& value(const string_view sv) const override {
 	auto i = values.find(string{sv});
 	if (i != values.end()) {
-            auto [_, v] = *i;
-            return v;
+            return *i->second;
 	}
 	return EMPTY;
     }
 
-    void set(string_view var, const selector::Value& val) {
-	values[var] = val;
+    void set(string_view var, unique_ptr<const selector::Value> val) {
+	    values[var] = std::move(val);
     }
 };
 
@@ -71,7 +72,12 @@ const char* selector_intern(const char* str) {
 }
 
 const selector_expression_t* selector_expression(const char* exp) {
-    return static_cast<selector_expression_t*>(selector::make_selector(exp).release());
+    try {
+        return static_cast<selector_expression_t*>(selector::make_selector(exp).release());
+    } catch (std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return nullptr;
+    }
 }
 
 void selector_expression_free(const selector_expression_t* exp) {
@@ -79,7 +85,11 @@ void selector_expression_free(const selector_expression_t* exp) {
 }
 
 bool selector_expression_eval(const selector_expression_t* exp, const selector_environment_t* env) {
-    return eval(*exp, *env);
+        return eval(*exp, *env);
+}
+
+const selector_value_t* selector_expression_value(const selector_expression_t* exp, const selector_environment_t* env) {
+        return static_cast<selector_value_t*>(new selector::Value{exp->eval(*env)});
 }
 
 void selector_expression_dump(const selector_expression_t* exp) {
@@ -94,8 +104,18 @@ void selector_environment_free(const selector_environment_t* env) {
     delete env;
 }
 
+void selector_environment_dump(const selector_environment_t* env) {
+    for (auto& [k,v] : env->values) {
+        std::cerr << k << "=" << *v << "\n";
+    };
+}
+
 void selector_environment_set(selector_environment_t* env, const char* var, const selector_value_t* val) {
-    env->set(var, *val);
+    env->set(var, unique_ptr<const selector::Value>{val});
+}
+
+const selector_value_t* selector_environment_get(selector_environment_t* env, const char* var) {
+    return static_cast<const selector_value_t*>(&env->value(var));
 }
 
 const selector_value_t* selector_value_unknown() {
@@ -115,7 +135,7 @@ const selector_value_t* selector_value_approx(double d) {
 }
 
 const selector_value_t* selector_value_string(const char* str) {
-    return static_cast<const selector_value_t*>(new selector::Value(str));
+    return static_cast<const selector_value_t*>(new selector::Value(string_view{str}));
 }
 
 void selector_value_free(const selector_value_t* v) {

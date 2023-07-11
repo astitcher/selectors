@@ -18,8 +18,10 @@ typedef struct selector_environment_t selector_environment_t;
 SELECTORS_EXPORT const selector_expression_t* selector_expression(const char* exp);
 SELECTORS_EXPORT void selector_expression_free(const selector_expression_t* exp);
 SELECTORS_EXPORT bool selector_expression_eval(const selector_expression_t* exp, const selector_environment_t* env);
+SELECTORS_EXPORT const selector_value_t* selector_expression_value(const selector_expression_t* exp, const selector_environment_t* env);
 SELECTORS_EXPORT void selector_expression_dump(const selector_expression_t* exp);
 
+SELECTORS_EXPORT const selector_value_t* selector_value(const char* str);
 SELECTORS_EXPORT const selector_value_t* selector_value_unknown();
 SELECTORS_EXPORT const selector_value_t* selector_value_bool(bool b);
 SELECTORS_EXPORT const selector_value_t* selector_value_exact(int64_t i);
@@ -30,7 +32,9 @@ SELECTORS_EXPORT void selector_value_dump(const selector_value_t* v);
 
 SELECTORS_EXPORT selector_environment_t* selector_environment();
 SELECTORS_EXPORT void selector_environment_free(const selector_environment_t* env);
-SELECTORS_EXPORT void selector_environment_set(const selector_environment_t* env, const char *var, const selector_value_t* val);
+SELECTORS_EXPORT void selector_environment_dump(const selector_environment_t* env);
+SELECTORS_EXPORT const selector_value_t* selector_environment_get(const selector_environment_t* env, const char *var);
+SELECTORS_EXPORT void selector_environment_set(selector_environment_t* env, const char *var, const selector_value_t* val);
 
 SELECTORS_EXPORT const char* selector_intern(const char* exp);
 

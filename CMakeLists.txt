@@ -19,7 +19,7 @@
 
 cmake_minimum_required(VERSION 3.25)
 
-project(Selectors LANGUAGES CXX VERSION 0.1)
+project(Selectors LANGUAGES C CXX VERSION 0.1)
 
 include(CTest)
 include(GenerateExportHeader)
@@ -43,6 +43,12 @@ set_target_properties(selectors
         INTERPROCEDURAL_OPTIMIZATION on)
 
 generate_export_header(selectors)
+
+add_executable(selector_cli selector_cli.c)
+target_link_libraries(selector_cli PRIVATE selectors readline)
+set_target_properties(selector_cli
+    PROPERTIES
+        INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
 
 add_executable(selector_tests SelectorTests.cpp)
 target_link_libraries(selector_tests PRIVATE selectors Catch2::Catch2)

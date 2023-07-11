@@ -107,9 +107,6 @@ inline constexpr bool sameType(const Value& v1, const Value& v2) {
 }
 
 
-SELECTORS_EXPORT
-std::ostream& operator<<(std::ostream& os, const Value& v);
-
 bool operator==(Value, Value);
 bool operator!=(Value, Value);
 bool operator<(Value, Value);
@@ -123,6 +120,8 @@ Value operator-(Value, Value);
 Value operator*(Value, Value);
 Value operator/(Value, Value);
 Value operator-(const Value&);
+
+SELECTORS_EXPORT std::ostream& operator<<(std::ostream& os, const Value& v);
 
 }
 
