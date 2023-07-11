@@ -28,6 +28,8 @@
 #include <memory>
 #include <string_view>
 
+#include "selectors_export.h"
+
 namespace selector {
 
 class Env;
@@ -40,9 +42,9 @@ public:
     virtual BoolOrNone eval_bool(const Env&) const = 0;
 };
 
-__attribute__((visibility("default"))) std::unique_ptr<Expression> make_selector(std::string_view exp);
-__attribute__((visibility("default"))) bool eval(const Expression&, const Env&);
-__attribute__((visibility("default"))) std::ostream& operator<<(std::ostream&, const Expression&);
+SELECTORS_EXPORT std::unique_ptr<Expression> make_selector(std::string_view exp);
+SELECTORS_EXPORT bool eval(const Expression&, const Env&);
+SELECTORS_EXPORT std::ostream& operator<<(std::ostream&, const Expression&);
 }
 
 #endif

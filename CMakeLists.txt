@@ -22,6 +22,7 @@ cmake_minimum_required(VERSION 3.25)
 project(Selectors LANGUAGES CXX VERSION 0.1)
 
 include(CTest)
+include(GenerateExportHeader)
 
 find_package(Catch2 REQUIRED)
 include(Catch)
@@ -35,10 +36,18 @@ set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 add_library(selectors SHARED SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp selectors.cpp)
 set_target_properties(selectors
     PROPERTIES
-        INTERPROCEDURAL_OPTIMIZATION on
-        COMPILE_FLAGS "-fvisibility-inlines-hidden -fvisibility=hidden")
+        INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}
+        CXX_VISIBILITY_PRESET hidden
+        C_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON
+        INTERPROCEDURAL_OPTIMIZATION on)
+
+generate_export_header(selectors)
 
 add_executable(selector_tests SelectorTests.cpp)
 target_link_libraries(selector_tests PRIVATE selectors Catch2::Catch2)
+set_target_properties(selector_tests
+    PROPERTIES
+        INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
 
 catch_discover_tests(selector_tests)

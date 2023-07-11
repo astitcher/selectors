@@ -28,6 +28,8 @@
 #include <string_view>
 #include <variant>
 
+#include "selectors_export.h"
+
 namespace selector {
 
 enum BoolOrNone : uint8_t {
@@ -104,7 +106,8 @@ inline constexpr bool sameType(const Value& v1, const Value& v2) {
     return v1.value.index() == v2.value.index();
 }
 
-__attribute__((visibility("default")))
+
+SELECTORS_EXPORT
 std::ostream& operator<<(std::ostream& os, const Value& v);
 
 bool operator==(Value, Value);

@@ -27,6 +27,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "selectors_export.h"
+
 namespace selector {
 
 typedef enum {
@@ -81,17 +83,17 @@ struct Token {
     }
 };
 
-__attribute__((visibility("default")))
+SELECTORS_EXPORT
 std::ostream& operator<<(std::ostream& os, const Token& t);
 
-class __attribute__((visibility("default")))
+class SELECTORS_EXPORT
 TokenException : public std::range_error {
 public:
     TokenException(const std::string&);
 };
 
 
-__attribute__((visibility("default")))
+SELECTORS_EXPORT
 bool tokenise(std::string_view& sv, Token& tok);
 
 class
@@ -103,10 +105,10 @@ Tokeniser {
     std::string_view::const_iterator inp;
 
 public:
-    __attribute__((visibility("default"))) Tokeniser(std::string_view input);
-    __attribute__((visibility("default"))) void returnTokens(unsigned int n = 1);
-    __attribute__((visibility("default"))) const Token& nextToken();
-    __attribute__((visibility("default"))) std::string_view remaining();
+    SELECTORS_EXPORT Tokeniser(std::string_view input);
+    SELECTORS_EXPORT void returnTokens(unsigned int n = 1);
+    SELECTORS_EXPORT const Token& nextToken();
+    SELECTORS_EXPORT std::string_view remaining();
 };
 
 }
