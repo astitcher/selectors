@@ -31,13 +31,15 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 using std::string;
 using std::string_view;
 using std::unordered_map;
-
+using std::unordered_set;
 
 // C interfaces
+
 struct selector_expression_t : selector::Expression {};
 
 struct selector_value_t : selector::Value {};
@@ -45,7 +47,7 @@ struct selector_value_t : selector::Value {};
 auto constexpr EMPTY = selector::Value{};
 
 struct selector_environment_t : selector::Env {
-    unordered_map<string, selector::Value> values;
+    unordered_map<string_view, selector::Value> values;
 
     const selector::Value & value(const string_view sv) const override {
 	auto i = values.find(string{sv});
@@ -56,10 +58,17 @@ struct selector_environment_t : selector::Env {
 	return EMPTY;
     }
 
-    void set(const string& var, const selector::Value& val) {
+    void set(string_view var, const selector::Value& val) {
 	values[var] = val;
     }
 };
+
+const char* selector_intern(const char* str) {
+    static auto strings = unordered_set<string>{};
+
+    if (auto i=strings.find(str); i!=strings.end()) return i->c_str();
+    else return strings.emplace(str).first->c_str();
+}
 
 const selector_expression_t* selector_expression(const char* exp) {
     return static_cast<selector_expression_t*>(selector::make_selector(exp).release());
