@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -12,17 +13,27 @@ void process(const char* str, selector_environment_t* env)
     if (*str=='\\'){
         ++str;
         switch (*str) {
-          case 'b':
-            // Binary
-            break;
-          case 'x':
-          case 'h':
-            break;
+          case 'v': {
+            ++str;
+            const char* endv = strchr(str, '=');
+            if (!endv) break;
+            const char* var = strndup(str, endv-str);
+            // set variable
+            const selector_expression_t* exp = selector_expression(endv+1);
+            if (exp) selector_environment_set(env, selector_intern(var), selector_expression_value(exp, env));
+
+            selector_expression_free(exp);
+            free((void*)var);
+            return;
+          }
+          case 'e':
+            // print env
+            selector_environment_dump(env);
+            return;
           default:
             printf("Unrecognized special command: %c\n", *str);
             return;
         }
-        ++str;
     }
 
     const selector_expression_t* exp = selector_expression(str);
@@ -42,8 +53,9 @@ void process(const char* str, selector_environment_t* env)
 int main(int argc, const char* argv[])
 {
   selector_environment_t* env = selector_environment();
-  for (int i=1; i<argc; i+=2) {
-    selector_environment_set(env, argv[i], selector_value_string(argv[i+1]));
+  for (int i=1; i<argc-1; i+=2) {
+    const selector_value_t* val = selector_value(argv[i+1]);
+    if (val) selector_environment_set(env, argv[i], val);
   }
 
   selector_environment_dump(env);

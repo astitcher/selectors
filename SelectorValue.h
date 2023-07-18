@@ -102,6 +102,10 @@ inline constexpr bool numeric(const Value& v) {
     return v.value.index() == Value::T_EXACT || v.value.index() == Value::T_INEXACT;
 }
 
+inline constexpr bool characters(const Value& v) {
+    return v.value.index() == Value::T_STRING;
+}
+
 inline constexpr bool sameType(const Value& v1, const Value& v2) {
     return v1.value.index() == v2.value.index();
 }

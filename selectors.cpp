@@ -64,11 +64,16 @@ struct selector_environment_t : selector::Env {
     }
 };
 
-const char* selector_intern(const char* str) {
+const char* selector_intern(string_view str) {
     static auto strings = unordered_set<string>{};
 
-    if (auto i=strings.find(str); i!=strings.end()) return i->c_str();
-    else return strings.emplace(str).first->c_str();
+    string s{str};
+    if (auto i=strings.find(s); i!=strings.end()) return i->c_str();
+    else return strings.emplace(s).first->c_str();
+}
+
+const char* selector_intern(const char* str) {
+    return selector_intern(string_view{str});
 }
 
 const selector_expression_t* selector_expression(const char* exp) {
@@ -85,11 +90,13 @@ void selector_expression_free(const selector_expression_t* exp) {
 }
 
 bool selector_expression_eval(const selector_expression_t* exp, const selector_environment_t* env) {
-        return eval(*exp, *env);
+    return eval(*exp, *env);
 }
 
 const selector_value_t* selector_expression_value(const selector_expression_t* exp, const selector_environment_t* env) {
-        return static_cast<selector_value_t*>(new selector::Value{exp->eval(*env)});
+    auto val = exp->eval(*env);
+    if (selector::characters(val)) val.value = selector_intern(std::get<string_view>(val.value));
+    return static_cast<selector_value_t*>(new selector::Value{val});
 }
 
 void selector_expression_dump(const selector_expression_t* exp) {
@@ -135,7 +142,13 @@ const selector_value_t* selector_value_approx(double d) {
 }
 
 const selector_value_t* selector_value_string(const char* str) {
-    return static_cast<const selector_value_t*>(new selector::Value(string_view{str}));
+    return static_cast<const selector_value_t*>(new selector::Value(selector_intern(str)));
+}
+
+const selector_value_t* selector_value(const char* str) {
+    auto selector_env = std::unique_ptr<const selector_environment_t>{selector_environment()};
+    auto selector_exp = std::unique_ptr<const selector_expression_t>{selector_expression(str)};
+    return selector_expression_value(selector_exp.get(), selector_env.get());
 }
 
 void selector_value_free(const selector_value_t* v) {

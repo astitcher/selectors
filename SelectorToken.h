@@ -105,7 +105,7 @@ Tokeniser {
     std::string_view::const_iterator inp;
 
 public:
-    SELECTORS_EXPORT Tokeniser(std::string_view input);
+    SELECTORS_EXPORT explicit Tokeniser(std::string_view input);
     SELECTORS_EXPORT void returnTokens(unsigned int n = 1);
     SELECTORS_EXPORT const Token& nextToken();
     SELECTORS_EXPORT std::string_view remaining();
