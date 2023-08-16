@@ -27,6 +27,9 @@ include(GenerateExportHeader)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
@@ -44,15 +47,15 @@ generate_export_header(selectors)
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)
   pkg_check_modules(Readline IMPORTED_TARGET readline)
-
-  if(Readline_FOUND)
-    add_executable(selector_cli selector_cli.c)
-    target_link_libraries(selector_cli PRIVATE selectors PkgConfig::Readline)
-    set_target_properties(selector_cli
-      PROPERTIES
-        INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
-  endif(Readline_FOUND)
 endif(PKG_CONFIG_FOUND)
+set(found_readline "$<BOOL:${Readline_FOUND}>")
+
+add_executable(selector_cli selector_cli.c)
+target_link_libraries(selector_cli PRIVATE selectors $<${found_readline}:PkgConfig::Readline>)
+set_target_properties(selector_cli
+  PROPERTIES
+    INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}
+    COMPILE_DEFINITIONS $<${found_readline}:READLINE>)
 
 find_package(Catch2)
 if(Catch2_FOUND)

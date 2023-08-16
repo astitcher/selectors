@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
 
 void process(const char* str, selector_environment_t* env)
 {
@@ -50,6 +52,35 @@ void process(const char* str, selector_environment_t* env)
     selector_expression_free(exp);
 }
 
+#ifdef READLINE
+char* getinput(char* prompt)
+{
+  static char* buffer = NULL;
+  free(buffer);
+  buffer = readline(prompt);
+  if (buffer && *buffer) {
+    add_history(buffer);
+  }
+  return buffer;
+}
+#else
+char* getinput(char* prompt)
+{
+  static char* buffer = NULL;
+  size_t size = 0;
+  free(buffer);
+  fputs(prompt, stdout);
+  ssize_t r = getline(&buffer, &size, stdin);
+  if (r==-1) {
+    free(buffer);
+    buffer = NULL;
+  } else {
+    buffer[r] = 0;
+  }
+  return buffer;
+}
+#endif
+
 int main(int argc, const char* argv[])
 {
   selector_environment_t* env = selector_environment();
@@ -60,14 +91,12 @@ int main(int argc, const char* argv[])
 
   selector_environment_dump(env);
 
-  char* buffer = readline(">> ");
-  while (buffer) {
-    add_history(buffer);
+  while (true) {
+    char* buffer = getinput(">> ");
+    if (!buffer) break;
+
     process(buffer, env);
-    free(buffer);
-    buffer = readline(">> ");
   }
-  free(buffer);
 
   selector_environment_free(env);
   return 0;
