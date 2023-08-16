@@ -17,15 +17,12 @@
 # under the License.
 #
 
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.24)
 
 project(Selectors LANGUAGES C CXX VERSION 0.1)
 
 include(CTest)
 include(GenerateExportHeader)
-
-find_package(Catch2 REQUIRED)
-include(Catch)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -44,16 +41,29 @@ set_target_properties(selectors
 
 generate_export_header(selectors)
 
-add_executable(selector_cli selector_cli.c)
-target_link_libraries(selector_cli PRIVATE selectors readline)
-set_target_properties(selector_cli
-    PROPERTIES
-        INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
+find_package(PkgConfig)
+if(PKG_CONFIG_FOUND)
+  pkg_check_modules(Readline IMPORTED_TARGET readline)
 
-add_executable(selector_tests SelectorTests.cpp)
-target_link_libraries(selector_tests PRIVATE selectors Catch2::Catch2)
-set_target_properties(selector_tests
-    PROPERTIES
+  if(Readline_FOUND)
+    add_executable(selector_cli selector_cli.c)
+    target_link_libraries(selector_cli PRIVATE selectors PkgConfig::Readline)
+    set_target_properties(selector_cli
+      PROPERTIES
         INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
+  endif(Readline_FOUND)
+endif(PKG_CONFIG_FOUND)
 
-catch_discover_tests(selector_tests)
+find_package(Catch2)
+if(Catch2_FOUND)
+  include(Catch)
+
+  add_executable(selector_tests SelectorTests.cpp)
+  target_link_libraries(selector_tests PRIVATE selectors Catch2::Catch2)
+  set_target_properties(selector_tests
+    PROPERTIES
+      INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
+
+  catch_discover_tests(selector_tests)
+endif(Catch2_FOUND)
+
