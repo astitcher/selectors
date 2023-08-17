@@ -57,7 +57,7 @@ bool tokeniserCheck(string_view& sv, Token& tok, F f) {
 bool tokeniseEos(string_view& sv, Token& tok)
 {
     return tokeniserCheck(
-        sv, tok, 
+        sv, tok,
         [](TokenType t) -> bool {
             return t==selector::T_EOS;
         }
@@ -67,7 +67,7 @@ bool tokeniseEos(string_view& sv, Token& tok)
 bool tokeniseParens(string_view& sv, Token& tok)
 {
     return tokeniserCheck(
-        sv, tok, 
+        sv, tok,
         [](TokenType t) -> bool {
             return t==selector::T_LPAREN || t==selector::T_RPAREN;
         }
@@ -77,7 +77,7 @@ bool tokeniseParens(string_view& sv, Token& tok)
 bool tokeniseOperator(string_view& sv, Token& tok)
 {
     return tokeniserCheck(
-        sv, tok, 
+        sv, tok,
         [](TokenType t) -> bool {
             return t>=selector::T_PLUS && t<=selector::T_GREQ;
         }
@@ -87,7 +87,7 @@ bool tokeniseOperator(string_view& sv, Token& tok)
 bool tokeniseString(string_view& sv, Token& tok)
 {
     return tokeniserCheck(
-        sv, tok, 
+        sv, tok,
         [](TokenType t) -> bool {
             return t==selector::T_STRING;
         }
@@ -97,7 +97,7 @@ bool tokeniseString(string_view& sv, Token& tok)
 bool tokeniseIdentifier(string_view& sv, Token& tok)
 {
     return tokeniserCheck(
-        sv, tok, 
+        sv, tok,
         [](TokenType t) -> bool {
             return t==selector::T_IDENTIFIER;
         }
@@ -134,7 +134,7 @@ bool tokeniseReservedWord(string_view& sv, Token& tok)
 bool tokeniseNumeric(string_view& sv, Token& tok)
 {
     return tokeniserCheck(
-        sv, tok, 
+        sv, tok,
         [](TokenType t) -> bool {
             return t==selector::T_NUMERIC_EXACT || t==selector::T_NUMERIC_APPROX;
         }
