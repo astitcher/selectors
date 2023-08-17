@@ -442,8 +442,10 @@ SECTION("numericEval")
     CHECK(eval_selector("(A BETWEEN C and 45) IS NULL", env));
     CHECK(eval_selector("17/4=4", env));
     CHECK(!eval_selector("A/0=0", env));
+    CHECK(!eval_selector("B/0=0", env));
     CHECK(eval_selector("A*B+19<A*(B+19)", env));
     CHECK(eval_selector("-A=0-A", env));
+    CHECK(eval_selector("1+'foo' is null", env));
 }
 
 SECTION("numericLiterals")

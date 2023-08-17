@@ -195,8 +195,13 @@ Value operator/(Value v1, Value v2)
     if (!promoteNumeric(v1, v2)) return Value{};
 
     switch (v1.type()) {
-    case Value::T_EXACT:
-        return get<int64_t>(v1.value) / get<int64_t>(v2.value);
+    case Value::T_EXACT: {
+        int64_t divisor = get<int64_t>(v2.value);
+        if (divisor==0) {
+            return get<int64_t>(v1.value) / double(divisor);
+        }
+        return get<int64_t>(v1.value) / divisor;
+    }
     case Value::T_INEXACT:
         return get<double>(v1.value) / get<double>(v2.value);
     default:
