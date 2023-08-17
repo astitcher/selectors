@@ -36,7 +36,7 @@ template <class ...Fs>
 struct overload : Fs... {
   template <class ...Ts>
   overload(Ts&& ...ts) : Fs{std::forward<Ts>(ts)}...
-  {} 
+  {}
 
   using Fs::operator()...;
 };
@@ -58,13 +58,13 @@ ostream& operator<<(ostream& os, const Value& v)
     return os;
 }
 
-inline void promoteNumeric(Value& v1, Value& v2)
+inline bool promoteNumeric(Value& v1, Value& v2)
 {
-    if (!numeric(v1) || !numeric(v2)) return;
-    if (sameType(v1,v2)) return;
+    if (!numeric(v1) || !numeric(v2)) return false;
+    if (sameType(v1,v2)) return true;
     switch (v1.type()) {
-    case Value::T_INEXACT: v2 = double(get<int64_t>(v2.value)); return;
-    case Value::T_EXACT:   v1 = double(get<int64_t>(v1.value)); return;
+    case Value::T_INEXACT: v2 = double(get<int64_t>(v2.value)); return true;
+    case Value::T_EXACT:   v1 = double(get<int64_t>(v1.value)); return true;
     default:               assert(false);
     }
 }
@@ -87,58 +87,54 @@ bool operator!=(Value v1, Value v2)
 
 bool operator<(Value v1, Value v2)
 {
-    promoteNumeric(v1, v2);
+    if (!promoteNumeric(v1, v2)) return false;
 
     switch (v1.type()) {
     case Value::T_EXACT:
     case Value::T_INEXACT:
         return v1.value < v2.value;
     default:
-        break;
+        assert(false);
     }
-    return false;
 }
 
 bool operator>(Value v1, Value v2)
 {
-    promoteNumeric(v1, v2);
+    if (!promoteNumeric(v1, v2)) return false;
 
     switch (v1.type()) {
     case Value::T_EXACT:
     case Value::T_INEXACT:
         return v1.value > v2.value;
     default:
-        break;
+        assert(false);
     }
-    return false;
 }
 
 bool operator<=(Value v1, Value v2)
 {
-    promoteNumeric(v1, v2);
+    if (!promoteNumeric(v1, v2)) return false;
 
     switch (v1.type()) {
     case Value::T_EXACT:
     case Value::T_INEXACT:
         return v1.value <= v2.value;
     default:
-        break;
+        assert(false);
     }
-    return false;
 }
 
 bool operator>=(Value v1, Value v2)
 {
-    promoteNumeric(v1, v2);
+    if (!promoteNumeric(v1, v2)) return false;
 
     switch (v1.type()) {
     case Value::T_EXACT:
     case Value::T_INEXACT:
         return v1.value >= v2.value;
     default:
-        break;
+        assert(false);
     }
-    return false;
 }
 
 BoolOrNone operator!(const Value& v)
@@ -154,7 +150,7 @@ BoolOrNone operator!(const Value& v)
 
 Value operator+(Value v1, Value v2)
 {
-    promoteNumeric(v1, v2);
+    if (!promoteNumeric(v1, v2)) return Value{};
 
     switch (v1.type()) {
     case Value::T_EXACT:
@@ -162,14 +158,13 @@ Value operator+(Value v1, Value v2)
     case Value::T_INEXACT:
         return get<double>(v1.value) + get<double>(v2.value);
     default:
-        break;
+        assert(false);
     }
-    return Value();
 }
 
 Value operator-(Value v1, Value v2)
 {
-    promoteNumeric(v1, v2);
+    if (!promoteNumeric(v1, v2)) return Value{};
 
     switch (v1.type()) {
     case Value::T_EXACT:
@@ -177,14 +172,13 @@ Value operator-(Value v1, Value v2)
     case Value::T_INEXACT:
         return get<double>(v1.value) - get<double>(v2.value);
     default:
-        break;
+        assert(false);
     }
-    return Value();
 }
 
 Value operator*(Value v1, Value v2)
 {
-    promoteNumeric(v1, v2);
+    if (!promoteNumeric(v1, v2)) return Value{};
 
     switch (v1.type()) {
     case Value::T_EXACT:
@@ -192,14 +186,13 @@ Value operator*(Value v1, Value v2)
     case Value::T_INEXACT:
         return get<double>(v1.value) * get<double>(v2.value);
     default:
-        break;
+        assert(false);
     }
-    return Value();
 }
 
 Value operator/(Value v1, Value v2)
 {
-    promoteNumeric(v1, v2);
+    if (!promoteNumeric(v1, v2)) return Value{};
 
     switch (v1.type()) {
     case Value::T_EXACT:
@@ -207,9 +200,8 @@ Value operator/(Value v1, Value v2)
     case Value::T_INEXACT:
         return get<double>(v1.value) / get<double>(v2.value);
     default:
-        break;
+        assert(false);
     }
-    return Value();
 }
 
 Value operator-(const Value& v)
