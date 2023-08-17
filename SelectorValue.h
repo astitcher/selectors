@@ -72,8 +72,8 @@ public:
         value(i0)
     {}
 
-    constexpr Value(const int32_t i0) :
-        value(i0)
+    constexpr Value(const int i0) :
+        value(static_cast<int64_t>(i0))
     {}
 
     constexpr Value(const double x0) :
