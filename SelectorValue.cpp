@@ -60,13 +60,15 @@ ostream& operator<<(ostream& os, const Value& v)
 
 inline bool promoteNumeric(Value& v1, Value& v2)
 {
-    if (!numeric(v1) || !numeric(v2)) return false;
-    if (sameType(v1,v2)) return true;
-    switch (v1.type()) {
-    case Value::T_INEXACT: v2 = double(get<int64_t>(v2.value)); return true;
-    case Value::T_EXACT:   v1 = double(get<int64_t>(v1.value)); return true;
-    default:               assert(false);
+    if (numeric(v1) && numeric(v2)) {
+        if (sameType(v1,v2)) return true;
+        switch (v1.type()) {
+        case Value::T_INEXACT: v2 = double(get<int64_t>(v2.value)); return true;
+        case Value::T_EXACT:   v1 = double(get<int64_t>(v1.value)); return true;
+        default:               assert(false);
+        }
     }
+    return false;
 }
 
 bool operator==(Value v1, Value v2)
@@ -87,54 +89,58 @@ bool operator!=(Value v1, Value v2)
 
 bool operator<(Value v1, Value v2)
 {
-    if (!promoteNumeric(v1, v2)) return false;
-
-    switch (v1.type()) {
-    case Value::T_EXACT:
-    case Value::T_INEXACT:
-        return v1.value < v2.value;
-    default:
-        assert(false);
+    if (promoteNumeric(v1, v2)) {
+        switch (v1.type()) {
+        case Value::T_EXACT:
+        case Value::T_INEXACT:
+            return v1.value < v2.value;
+        default:
+            assert(false);
+        }
     }
+    return false;
 }
 
 bool operator>(Value v1, Value v2)
 {
-    if (!promoteNumeric(v1, v2)) return false;
-
-    switch (v1.type()) {
-    case Value::T_EXACT:
-    case Value::T_INEXACT:
-        return v1.value > v2.value;
-    default:
-        assert(false);
+    if (promoteNumeric(v1, v2)) {
+        switch (v1.type()) {
+        case Value::T_EXACT:
+        case Value::T_INEXACT:
+            return v1.value > v2.value;
+        default:
+            assert(false);
+        }
     }
+    return false;
 }
 
 bool operator<=(Value v1, Value v2)
 {
-    if (!promoteNumeric(v1, v2)) return false;
-
-    switch (v1.type()) {
-    case Value::T_EXACT:
-    case Value::T_INEXACT:
-        return v1.value <= v2.value;
-    default:
-        assert(false);
+    if (promoteNumeric(v1, v2)) {
+        switch (v1.type()) {
+        case Value::T_EXACT:
+        case Value::T_INEXACT:
+            return v1.value <= v2.value;
+        default:
+            assert(false);
+        }
     }
+    return false;
 }
 
 bool operator>=(Value v1, Value v2)
 {
-    if (!promoteNumeric(v1, v2)) return false;
-
-    switch (v1.type()) {
-    case Value::T_EXACT:
-    case Value::T_INEXACT:
-        return v1.value >= v2.value;
-    default:
-        assert(false);
+    if (promoteNumeric(v1, v2)) {
+        switch (v1.type()) {
+        case Value::T_EXACT:
+        case Value::T_INEXACT:
+            return v1.value >= v2.value;
+        default:
+            assert(false);
+        }
     }
+    return false;
 }
 
 BoolOrNone operator!(const Value& v)
@@ -150,63 +156,67 @@ BoolOrNone operator!(const Value& v)
 
 Value operator+(Value v1, Value v2)
 {
-    if (!promoteNumeric(v1, v2)) return Value{};
-
-    switch (v1.type()) {
-    case Value::T_EXACT:
-        return get<int64_t>(v1.value) + get<int64_t>(v2.value);
-    case Value::T_INEXACT:
-        return get<double>(v1.value) + get<double>(v2.value);
-    default:
-        assert(false);
+    if (promoteNumeric(v1, v2)) {
+        switch (v1.type()) {
+        case Value::T_EXACT:
+            return get<int64_t>(v1.value) + get<int64_t>(v2.value);
+        case Value::T_INEXACT:
+            return get<double>(v1.value) + get<double>(v2.value);
+        default:
+            assert(false);
+        }
     }
+    return Value{};
 }
 
 Value operator-(Value v1, Value v2)
 {
-    if (!promoteNumeric(v1, v2)) return Value{};
-
-    switch (v1.type()) {
-    case Value::T_EXACT:
-        return get<int64_t>(v1.value) - get<int64_t>(v2.value);
-    case Value::T_INEXACT:
-        return get<double>(v1.value) - get<double>(v2.value);
-    default:
-        assert(false);
+    if (promoteNumeric(v1, v2)) {
+        switch (v1.type()) {
+        case Value::T_EXACT:
+            return get<int64_t>(v1.value) - get<int64_t>(v2.value);
+        case Value::T_INEXACT:
+            return get<double>(v1.value) - get<double>(v2.value);
+        default:
+            assert(false);
+        }
     }
+    return Value{};
 }
 
 Value operator*(Value v1, Value v2)
 {
-    if (!promoteNumeric(v1, v2)) return Value{};
-
-    switch (v1.type()) {
-    case Value::T_EXACT:
-        return get<int64_t>(v1.value) * get<int64_t>(v2.value);
-    case Value::T_INEXACT:
-        return get<double>(v1.value) * get<double>(v2.value);
-    default:
-        assert(false);
+    if (promoteNumeric(v1, v2)) {
+        switch (v1.type()) {
+        case Value::T_EXACT:
+            return get<int64_t>(v1.value) * get<int64_t>(v2.value);
+        case Value::T_INEXACT:
+            return get<double>(v1.value) * get<double>(v2.value);
+        default:
+            assert(false);
+        }
     }
+    return Value{};
 }
 
 Value operator/(Value v1, Value v2)
 {
-    if (!promoteNumeric(v1, v2)) return Value{};
-
-    switch (v1.type()) {
-    case Value::T_EXACT: {
-        int64_t divisor = get<int64_t>(v2.value);
-        if (divisor==0) {
-            return get<int64_t>(v1.value) / double(divisor);
+    if (promoteNumeric(v1, v2)) {
+        switch (v1.type()) {
+        case Value::T_EXACT: {
+            int64_t divisor = get<int64_t>(v2.value);
+            if (divisor==0) {
+                return get<int64_t>(v1.value) / double(divisor);
+            }
+            return get<int64_t>(v1.value) / divisor;
         }
-        return get<int64_t>(v1.value) / divisor;
+        case Value::T_INEXACT:
+            return get<double>(v1.value) / get<double>(v2.value);
+        default:
+            assert(false);
+        }
     }
-    case Value::T_INEXACT:
-        return get<double>(v1.value) / get<double>(v2.value);
-    default:
-        assert(false);
-    }
+    return Value{};
 }
 
 Value operator-(const Value& v)
