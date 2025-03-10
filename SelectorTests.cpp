@@ -29,8 +29,12 @@
 #include <string_view>
 #include <unordered_map>
 
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#if __has_include(<catch2/catch_all.hpp>)
+# include <catch2/catch_all.hpp>
+#else
+# define CATCH_CONFIG_MAIN
+# include <catch2/catch.hpp>
+#endif
 
 using std::get;
 using std::string;

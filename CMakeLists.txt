@@ -62,7 +62,10 @@ if(Catch2_FOUND)
   include(Catch)
 
   add_executable(selector_tests SelectorTests.cpp)
-  target_link_libraries(selector_tests PRIVATE selectors Catch2::Catch2)
+  target_link_libraries(selector_tests
+    PRIVATE
+      selectors
+      $<IF:$<TARGET_EXISTS:Catch2::Catch2WithMain>, Catch2::Catch2WithMain, Catch2::Catch2>)
   set_target_properties(selector_tests
     PROPERTIES
       INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
