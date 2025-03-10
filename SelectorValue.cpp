@@ -89,58 +89,30 @@ bool operator!=(Value v1, Value v2)
 
 bool operator<(Value v1, Value v2)
 {
-    if (promoteNumeric(v1, v2)) {
-        switch (v1.type()) {
-        case Value::T_EXACT:
-        case Value::T_INEXACT:
-            return v1.value < v2.value;
-        default:
-            assert(false);
-        }
-    }
-    return false;
+    return
+        promoteNumeric(v1, v2) &&
+        v1.value < v2.value;
 }
 
 bool operator>(Value v1, Value v2)
 {
-    if (promoteNumeric(v1, v2)) {
-        switch (v1.type()) {
-        case Value::T_EXACT:
-        case Value::T_INEXACT:
-            return v1.value > v2.value;
-        default:
-            assert(false);
-        }
-    }
-    return false;
+    return
+        promoteNumeric(v1, v2) &&
+        v1.value > v2.value;
 }
 
 bool operator<=(Value v1, Value v2)
 {
-    if (promoteNumeric(v1, v2)) {
-        switch (v1.type()) {
-        case Value::T_EXACT:
-        case Value::T_INEXACT:
-            return v1.value <= v2.value;
-        default:
-            assert(false);
-        }
-    }
-    return false;
+    return
+        promoteNumeric(v1, v2) &&
+        v1.value <= v2.value;
 }
 
 bool operator>=(Value v1, Value v2)
 {
-    if (promoteNumeric(v1, v2)) {
-        switch (v1.type()) {
-        case Value::T_EXACT:
-        case Value::T_INEXACT:
-            return v1.value >= v2.value;
-        default:
-            assert(false);
-        }
-    }
-    return false;
+    return
+        promoteNumeric(v1, v2) &&
+        v1.value >= v2.value;
 }
 
 BoolOrNone operator!(const Value& v)
