@@ -291,13 +291,13 @@ bool tokenise(std::string_view& sv, Token& tok)
         ++t;
     case ACCEPT_NOINC: {
         std::string_view::size_type l = t-sv.cbegin();
-        tok = Token(tokType, std::string_view{sv.cbegin(), l});
+        tok = Token(tokType, sv.substr(0, l));
         sv.remove_prefix(l);
         return true;
     }
     case ACCEPT_IDENTIFIER: {
         std::string_view::size_type l = t-sv.cbegin();
-        tok = Token(T_IDENTIFIER, std::string_view{sv.cbegin(), l});
+        tok = Token(T_IDENTIFIER, sv.substr(0, l));
         sv.remove_prefix(l);
         tokeniseReservedWord(tok);
         return true;

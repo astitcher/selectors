@@ -70,7 +70,7 @@ struct Token {
     Token()
     {}
 
-    Token(TokenType t, std::string_view v) :
+    Token(TokenType t, std::string_view&& v) :
         type(t),
         val(v)
     {}
