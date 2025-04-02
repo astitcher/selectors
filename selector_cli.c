@@ -19,7 +19,12 @@ void process(const char* str, selector_environment_t* env)
             ++str;
             const char* endv = strchr(str, '=');
             if (!endv) break;
-            const char* var = strndup(str, endv-str);
+            unsigned len = endv-str;
+            char* var = malloc(len+1);
+            if (!var) break;
+            memcpy(var, str, len);
+            var[len] = 0;
+
             // set variable
             const selector_expression_t* exp = selector_expression(endv+1);
             if (exp) selector_environment_set(env, selector_intern(var), selector_expression_value(exp, env));
