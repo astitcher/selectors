@@ -66,16 +66,14 @@ char* getinput(char* prompt)
 #else
 char* getinput(char* prompt)
 {
-  static char* buffer = NULL;
-  size_t size = 0;
-  free(buffer);
+  static char buffer[1024];
   fputs(prompt, stdout);
-  ssize_t r = getline(&buffer, &size, stdin);
-  if (r==-1) {
-    free(buffer);
-    buffer = NULL;
-  } else {
-    buffer[r] = 0;
+  if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+    return NULL;
+  }
+  size_t len = strlen(buffer);
+  if (len > 0 && buffer[len-1] == '\n') {
+    buffer[len-1] = '\0';
   }
   return buffer;
 }
