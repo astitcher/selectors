@@ -50,7 +50,7 @@ namespace selector::tests {
 using TokeniseF = auto (string_view&,Token&) -> bool;
 
 template <typename F>
-bool tokeniserCheck(string_view& sv, Token& tok, F f) {
+auto tokeniserCheck(string_view& sv, Token& tok, F f) -> bool {
     Token t1;
     auto sv1 = sv;
     bool r = tokenise(sv1, t1);
@@ -58,7 +58,7 @@ bool tokeniserCheck(string_view& sv, Token& tok, F f) {
     return false;
 }
 
-bool tokeniseEos(string_view& sv, Token& tok)
+auto tokeniseEos(string_view& sv, Token& tok) -> bool
 {
     return tokeniserCheck(
         sv, tok,
@@ -68,7 +68,7 @@ bool tokeniseEos(string_view& sv, Token& tok)
     );
 }
 
-bool tokeniseParens(string_view& sv, Token& tok)
+auto tokeniseParens(string_view& sv, Token& tok) -> bool
 {
     return tokeniserCheck(
         sv, tok,
@@ -78,7 +78,7 @@ bool tokeniseParens(string_view& sv, Token& tok)
     );
 }
 
-bool tokeniseOperator(string_view& sv, Token& tok)
+auto tokeniseOperator(string_view& sv, Token& tok) -> bool
 {
     return tokeniserCheck(
         sv, tok,
@@ -88,7 +88,7 @@ bool tokeniseOperator(string_view& sv, Token& tok)
     );
 }
 
-bool tokeniseString(string_view& sv, Token& tok)
+auto tokeniseString(string_view& sv, Token& tok) -> bool
 {
     return tokeniserCheck(
         sv, tok,
@@ -98,7 +98,7 @@ bool tokeniseString(string_view& sv, Token& tok)
     );
 }
 
-bool tokeniseIdentifier(string_view& sv, Token& tok)
+auto tokeniseIdentifier(string_view& sv, Token& tok) -> bool
 {
     return tokeniserCheck(
         sv, tok,
@@ -108,7 +108,7 @@ bool tokeniseIdentifier(string_view& sv, Token& tok)
     );
 }
 
-bool tokeniseReservedWord(string_view& sv, Token& tok)
+auto tokeniseReservedWord(string_view& sv, Token& tok) -> bool
 {
     auto sv1 = sv;
     Token t1;
@@ -135,7 +135,7 @@ bool tokeniseReservedWord(string_view& sv, Token& tok)
     return false;
 }
 
-bool tokeniseNumeric(string_view& sv, Token& tok)
+auto tokeniseNumeric(string_view& sv, Token& tok) -> bool
 {
     return tokeniserCheck(
         sv, tok,
@@ -146,7 +146,8 @@ bool tokeniseNumeric(string_view& sv, Token& tok)
 }
 
 
-void verifyTokeniserSuccess(TokeniseF t, const char* ss, TokenType tt, const char* tv, const char* fs) {
+auto verifyTokeniserSuccess(TokeniseF t, const char* ss, TokenType tt, const char* tv, const char* fs) -> void
+{
     Token tok;
     string s{ss};
     string_view sv{s};
@@ -155,7 +156,8 @@ void verifyTokeniserSuccess(TokeniseF t, const char* ss, TokenType tt, const cha
     CHECK(string(sv) == fs);
 }
 
-void verifyTokeniserFail(TokeniseF t, const char* c) {
+auto verifyTokeniserFail(TokeniseF t, const char* c) -> void
+{
     Token tok;
     string s{c};
     string_view sv{s};

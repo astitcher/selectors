@@ -36,7 +36,7 @@ namespace selector {
 // if the tokenise is successful then the beginning of the string_view is advanced, if the tokenise fails then the
 // beginning of the string_view is unchanged.
 
-std::ostream& operator<<(std::ostream& os, const Token& t)
+auto operator<<(std::ostream& os, const Token& t) -> std::ostream&
 {
     os << "T<" << t.type << ", " << t.val << ">";
     return os;
@@ -56,7 +56,7 @@ struct RWEntry {
     TokenType type;
 };
 
-inline bool caseless(const char* s1, const char* s2)
+inline auto caseless(const char* s1, const char* s2) -> bool
 {
     do {
         char ls1 = std::tolower(*s1);
@@ -70,13 +70,14 @@ inline bool caseless(const char* s1, const char* s2)
     return false;
 }
 
-inline bool operator<(const RWEntry& lhs, const RWEntry& rhs) {
+inline auto operator<(const RWEntry& lhs, const RWEntry& rhs) -> bool
+{
     return caseless(lhs.word, rhs.word);
 }
 
 }
 
-bool tokeniseReservedWord(Token& tok)
+auto tokeniseReservedWord(Token& tok) -> bool
 {
     // This must be sorted!!
     static const RWEntry reserved[] = {
@@ -108,7 +109,7 @@ bool tokeniseReservedWord(Token& tok)
 }
 
 // parsing strings is complicated by the need to allow embedded quotes by doubling the quote character
-bool processString(std::string_view& sv, char quoteChar, TokenType type, Token& tok)
+auto processString(std::string_view& sv, char quoteChar, TokenType type, Token& tok) -> bool
 {
     // We only get here once the tokeniser recognises the initial quote for a string
     // so we don't need to check for it again.
@@ -132,17 +133,17 @@ bool processString(std::string_view& sv, char quoteChar, TokenType type, Token& 
     return true;
 }
 
-inline bool isIdentifierStart(char c)
+inline auto isIdentifierStart(char c) -> bool
 {
     return std::isalpha(c) || c=='_' || c=='$';
 }
 
-inline bool isIdentifierPart(char c)
+inline auto isIdentifierPart(char c) -> bool
 {
     return std::isalnum(c) || c=='_' || c=='$' || c=='.';
 }
 
-bool tokenise(std::string_view& sv, Token& tok)
+auto tokenise(std::string_view& sv, Token& tok) -> bool
 {
     auto t = sv.cbegin();
     auto e = sv.cend();
@@ -321,7 +322,7 @@ Tokeniser::Tokeniser(std::string_view input0) :
  * Advance the string iterator past the parsed token on success. On failure the string iterator is 
  * in an undefined location.
  */
-const Token& Tokeniser::nextToken()
+auto Tokeniser::nextToken() -> const Token&
 {
     if ( tokens.size()>tokp ) return tokens[tokp++];
 
@@ -336,16 +337,15 @@ const Token& Tokeniser::nextToken()
     throw TokenException("Found illegal character");
 }
 
-void Tokeniser::returnTokens(unsigned int n)
+auto Tokeniser::returnTokens(unsigned int n) -> void
 {
     assert( n<=tokp );
     tokp-=n;
 }
 
-std::string_view Tokeniser::remaining()
+auto Tokeniser::remaining() -> std::string_view
 {
     return input;
 }
-
 
 }

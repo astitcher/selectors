@@ -37,14 +37,14 @@ class Env;
 class Expression {
 public:
     virtual ~Expression() noexcept = 0;
-    virtual void repr(std::ostream&) const = 0;
-    virtual Value eval(const Env&) const = 0;
-    virtual BoolOrNone eval_bool(const Env&) const = 0;
+    virtual auto repr(std::ostream&) const -> void = 0;
+    virtual auto eval(const Env&) const -> Value = 0;
+    virtual auto eval_bool(const Env&) const -> BoolOrNone = 0;
 };
 
-SELECTORS_EXPORT std::unique_ptr<Expression> make_selector(std::string_view exp);
-SELECTORS_EXPORT bool eval(const Expression&, const Env&);
-SELECTORS_EXPORT std::ostream& operator<<(std::ostream&, const Expression&);
+SELECTORS_EXPORT auto make_selector(std::string_view exp) -> std::unique_ptr<Expression>;
+SELECTORS_EXPORT auto eval(const Expression&, const Env&) -> bool;
+SELECTORS_EXPORT auto operator<<(std::ostream&, const Expression&) -> std::ostream&;
 }
 
 #endif

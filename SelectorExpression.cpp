@@ -39,7 +39,7 @@
 #include <sstream>
 #include <vector>
 
-using std::enable_if;
+using std::enable_if_t;
 using std::make_unique;
 using std::ostream;
 using std::string;
@@ -121,12 +121,13 @@ namespace selector {
 // Define operator<< for classes that have repr()
 // need to define type trait has_repr for those clases
 template<class T>
-struct has_repr{static const bool value = false;};
+struct has_repr{static constexpr bool value = false;};
+
+template<class T>
+inline constexpr bool has_repr_v = has_repr<T>::value;
 
 template <class T>
-inline
-typename enable_if<has_repr<T>::value, ostream&>::type
-operator<<(ostream& o, const T& t)
+auto inline operator<<(ostream& o, const T& t) -> enable_if_t<has_repr_v<T>, ostream&>
 {
     t.repr(o);
     return o;
@@ -148,11 +149,11 @@ public:
         fn_(*fn)
     {}
 
-    void repr(ostream& o) const {
+    auto repr(ostream& o) const -> void {
         o << repr_;
     }
 
-    BoolOrNone eval(Expression& e1, Expression& e2, const Env& env) const {
+    auto eval(Expression& e1, Expression& e2, const Env& env) const -> BoolOrNone {
         const Value v1(e1.eval(env));
         if (!unknown(v1)) {
           const Value v2(e2.eval(env));
@@ -164,7 +165,7 @@ public:
     }
 };
 
-template <> struct has_repr<ComparisonOperator> {static const bool value = true;};
+template <> struct has_repr<ComparisonOperator> {static constexpr bool value = true;};
 
 using UBoolFn = auto (const Value&) -> BoolOrNone;
 
@@ -178,18 +179,18 @@ public:
         fn_(*fn)
     {}
 
-    void repr(ostream& o) const {
+    auto repr(ostream& o) const -> void {
         o << repr_;
     }
 
-    BoolOrNone eval(Expression& e, const Env& env) const {
+    auto eval(Expression& e, const Env& env) const -> BoolOrNone {
         return fn_(e.eval(env));
     }
 };
 
-using ArithFn = auto (Value, Value) -> Value;
+template <> struct has_repr<UnaryBooleanOperator> {static constexpr bool value = true;};
 
-template <> struct has_repr<UnaryBooleanOperator> {static const bool value = true;};
+using ArithFn = auto (Value, Value) -> Value;
 
 class ArithmeticOperator {
     const char* repr_;
@@ -201,18 +202,18 @@ public:
         fn_(*fn)
     {}
 
-    void repr(ostream& o) const {
+    auto repr(ostream& o) const -> void {
         o << repr_;
     }
 
-    Value eval(Expression& e1, Expression& e2, const Env& env) const {
+    auto eval(Expression& e1, Expression& e2, const Env& env) const -> Value {
         return fn_(e1.eval(env), e2.eval(env));
     }
 };
 
 using UArithFn = auto (const Value&) -> Value;
 
-template <> struct has_repr<ArithmeticOperator> {static const bool value = true;};
+template <> struct has_repr<ArithmeticOperator> {static constexpr bool value = true;};
 
 class UnaryArithmeticOperator {
     const char* repr_;
@@ -224,16 +225,16 @@ public:
         fn_(*fn)
     {}
 
-    void repr(ostream& o) const {
+    auto repr(ostream& o) const -> void {
         o << repr_;
     }
 
-    Value eval(Expression& e, const Env& env) const {
+    auto eval(Expression& e, const Env& env) const -> Value {
         return fn_(e.eval(env));
     }
 };
 
-template <> struct has_repr<UnaryArithmeticOperator> {static const bool value = true;};
+template <> struct has_repr<UnaryArithmeticOperator> {static constexpr bool value = true;};
 
 ////////////////////////////////////////////////////
 

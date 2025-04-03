@@ -76,7 +76,7 @@ struct Token {
         val(v)
     {}
 
-    bool operator==(const Token& r) const
+    auto operator==(const Token& r) const -> bool
     {
         return
             (type == T_EOS && r.type == T_EOS) ||
@@ -85,7 +85,7 @@ struct Token {
 };
 
 SELECTORS_EXPORT
-std::ostream& operator<<(std::ostream& os, const Token& t);
+auto operator<<(std::ostream& os, const Token& t) -> std::ostream&;
 
 class SELECTORS_EXPORT
 TokenException : public std::range_error {
@@ -95,7 +95,7 @@ public:
 
 
 SELECTORS_EXPORT
-bool tokenise(std::string_view& sv, Token& tok);
+auto tokenise(std::string_view& sv, Token& tok) -> bool;
 
 class
 Tokeniser {
@@ -107,9 +107,9 @@ Tokeniser {
 
 public:
     SELECTORS_EXPORT explicit Tokeniser(std::string_view input);
-    SELECTORS_EXPORT void returnTokens(unsigned int n = 1);
-    SELECTORS_EXPORT const Token& nextToken();
-    SELECTORS_EXPORT std::string_view remaining();
+    SELECTORS_EXPORT auto returnTokens(unsigned int n = 1) -> void;
+    SELECTORS_EXPORT auto nextToken() -> const Token&;
+    SELECTORS_EXPORT auto remaining() -> std::string_view;
 };
 
 }
