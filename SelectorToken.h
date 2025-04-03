@@ -22,6 +22,7 @@
  *
  */
 
+#include <cstdint>
 #include <iosfwd>
 #include <string>
 #include <stdexcept>
@@ -31,7 +32,7 @@
 
 namespace selector {
 
-typedef enum {
+enum TokenType : uint8_t {
     T_EOS,
     T_NULL,
     T_TRUE,
@@ -61,7 +62,7 @@ typedef enum {
     T_GRT,
     T_LSEQ,
     T_GREQ
-} TokenType;
+};
 
 struct Token {
     TokenType type;

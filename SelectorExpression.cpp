@@ -136,7 +136,7 @@ operator<<(ostream& o, const T& t)
 
 // Operators
 
-typedef bool CompFn(Value, Value);
+using CompFn = auto (Value, Value) -> bool;
 
 class ComparisonOperator {
     const char* repr_;
@@ -166,7 +166,7 @@ public:
 
 template <> struct has_repr<ComparisonOperator> {static const bool value = true;};
 
-typedef BoolOrNone UBoolFn(const Value&);
+using UBoolFn = auto (const Value&) -> BoolOrNone;
 
 class UnaryBooleanOperator {
     const char* repr_;
@@ -187,7 +187,7 @@ public:
     }
 };
 
-typedef Value ArithFn(Value, Value);
+using ArithFn = auto (Value, Value) -> Value;
 
 template <> struct has_repr<UnaryBooleanOperator> {static const bool value = true;};
 
@@ -210,7 +210,7 @@ public:
     }
 };
 
-typedef Value UArithFn(const Value&);
+using UArithFn = auto (const Value&) -> Value;
 
 template <> struct has_repr<ArithmeticOperator> {static const bool value = true;};
 

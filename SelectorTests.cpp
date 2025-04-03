@@ -47,7 +47,7 @@ using namespace std::literals;
 
 namespace selector::tests {
 
-typedef bool (*TokeniseF)(string_view&,Token&);
+using TokeniseF = auto (string_view&,Token&) -> bool;
 
 template <typename F>
 bool tokeniserCheck(string_view& sv, Token& tok, F f) {
