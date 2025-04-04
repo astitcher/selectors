@@ -27,7 +27,6 @@
 #include "SelectorValue.h"
 
 #include <iostream>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -51,32 +50,31 @@ auto constexpr EMPTY = selector::Value{};
 struct selector_environment_t : selector::Env {
     unordered_map<string_view, unique_ptr<const selector::Value>> values;
 
-    const selector::Value& value(const string_view sv) const override {
-	auto i = values.find(string{sv});
-	if (i != values.end()) {
-            return *i->second;
-	}
-	return EMPTY;
+    auto value(const string_view sv) const -> const selector::Value& override final {
+        if (auto i = values.find(string{sv}); i!=values.end()) {
+                return *i->second;
+        }
+        return EMPTY;
     }
 
-    void set(string_view var, unique_ptr<const selector::Value> val) {
+    auto set(string_view var, unique_ptr<const selector::Value> val) -> void {
 	    values[var] = std::move(val);
     }
 };
 
-const char* selector_intern(string_view str) {
+auto selector_intern(string_view str) -> const char* {
     static auto strings = unordered_set<string>{};
 
     string s{str};
-    if (auto i=strings.find(s); i!=strings.end()) return i->c_str();
+    if (auto i = strings.find(s); i!=strings.end()) return i->c_str();
     else return strings.emplace(s).first->c_str();
 }
 
-const char* selector_intern(const char* str) {
+auto selector_intern(const char* str) -> const char* {
     return selector_intern(string_view{str});
 }
 
-const selector_expression_t* selector_expression(const char* exp) {
+auto selector_expression(const char* exp) -> const selector_expression_t* {
     try {
         return static_cast<selector_expression_t*>(selector::make_selector(exp).release());
     } catch (std::exception& e) {
@@ -85,77 +83,77 @@ const selector_expression_t* selector_expression(const char* exp) {
     }
 }
 
-void selector_expression_free(const selector_expression_t* exp) {
+auto selector_expression_free(const selector_expression_t* exp) -> void {
     delete exp;
 }
 
-bool selector_expression_eval(const selector_expression_t* exp, const selector_environment_t* env) {
+auto selector_expression_eval(const selector_expression_t* exp, const selector_environment_t* env) -> bool {
     return eval(*exp, *env);
 }
 
-const selector_value_t* selector_expression_value(const selector_expression_t* exp, const selector_environment_t* env) {
+auto selector_expression_value(const selector_expression_t* exp, const selector_environment_t* env) -> const selector_value_t* {
     auto val = exp->eval(*env);
     if (selector::characters(val)) val.value = selector_intern(std::get<string_view>(val.value));
     return static_cast<selector_value_t*>(new selector::Value{val});
 }
 
-void selector_expression_dump(const selector_expression_t* exp) {
+auto selector_expression_dump(const selector_expression_t* exp) -> void{
     std::cerr << *exp;
 }
 
-selector_environment_t* selector_environment() {
+auto selector_environment() -> selector_environment_t* {
     return new selector_environment_t;
 }
 
-void selector_environment_free(const selector_environment_t* env) {
+auto selector_environment_free(const selector_environment_t* env) -> void {
     delete env;
 }
 
-void selector_environment_dump(const selector_environment_t* env) {
-    for (auto& [k,v] : env->values) {
+auto selector_environment_dump(const selector_environment_t* env) -> void {
+    for (auto& [k, v] : env->values) {
         std::cerr << k << "=" << *v << "\n";
-    };
+    }
 }
 
-void selector_environment_set(selector_environment_t* env, const char* var, const selector_value_t* val) {
+auto selector_environment_set(selector_environment_t* env, const char* var, const selector_value_t* val) -> void {
     env->set(var, unique_ptr<const selector::Value>{val});
 }
 
-const selector_value_t* selector_environment_get(selector_environment_t* env, const char* var) {
+auto selector_environment_get(selector_environment_t* env, const char* var) -> const selector_value_t* {
     return static_cast<const selector_value_t*>(&env->value(var));
 }
 
-const selector_value_t* selector_value_unknown() {
+auto selector_value_unknown() -> const selector_value_t* {
     return static_cast<const selector_value_t*>(&EMPTY);
 }
 
-const selector_value_t* selector_value_bool(bool b) {
+auto selector_value_bool(bool b) -> const selector_value_t* {
     return static_cast<const selector_value_t*>(new selector::Value(b));
 }
 
-const selector_value_t* selector_value_exact(int64_t i) {
+auto selector_value_exact(int64_t i) -> const selector_value_t* {
     return static_cast<const selector_value_t*>(new selector::Value(i));
 }
 
-const selector_value_t* selector_value_approx(double d) {
+auto selector_value_approx(double d) -> const selector_value_t* {
     return static_cast<const selector_value_t*>(new selector::Value(d));
 }
 
-const selector_value_t* selector_value_string(const char* str) {
+auto selector_value_string(const char* str) -> const selector_value_t* {
     return static_cast<const selector_value_t*>(new selector::Value(selector_intern(str)));
 }
 
-const selector_value_t* selector_value(const char* str) {
+auto selector_value(const char* str) -> const selector_value_t* {
     auto selector_env = std::unique_ptr<const selector_environment_t>{selector_environment()};
     auto selector_exp = std::unique_ptr<const selector_expression_t>{selector_expression(str)};
     return selector_expression_value(selector_exp.get(), selector_env.get());
 }
 
-void selector_value_free(const selector_value_t* v) {
-    if (v!=selector_value_unknown()) delete v;
+auto selector_value_free(const selector_value_t* v) -> void {
+    if (v != selector_value_unknown()) delete v;
 }
 
-void selector_value_dump(const selector_value_t* v) {
+auto selector_value_dump(const selector_value_t* v) -> void {
     std::cerr << *v;
 }
 
