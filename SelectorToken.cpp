@@ -80,7 +80,7 @@ inline auto operator<(const RWEntry& lhs, const RWEntry& rhs) -> bool
 auto tokeniseReservedWord(Token& tok) -> bool
 {
     // This must be sorted!!
-    static const RWEntry reserved[] = {
+    static constexpr RWEntry reserved[] = {
         {"and", T_AND},
         {"between", T_BETWEEN},
         {"escape", T_ESCAPE},
@@ -94,7 +94,7 @@ auto tokeniseReservedWord(Token& tok) -> bool
         {"true", T_TRUE}
     };
 
-    const int reserved_size = sizeof(reserved)/sizeof(RWEntry);
+    static constexpr int reserved_size = sizeof(reserved)/sizeof(RWEntry);
 
     if ( tok.type != T_IDENTIFIER ) return false;
 
