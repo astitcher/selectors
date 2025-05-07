@@ -39,12 +39,21 @@ public:
     virtual ~Expression() noexcept = 0;
     virtual auto repr(std::ostream&) const -> void = 0;
     virtual auto eval(const Env&) const -> Value = 0;
-    virtual auto eval_bool(const Env&) const -> BoolOrNone = 0;
 };
 
 SELECTORS_EXPORT auto make_selector(std::string_view exp) -> std::unique_ptr<Expression>;
-SELECTORS_EXPORT auto eval(const Expression&, const Env&) -> bool;
-SELECTORS_EXPORT auto operator<<(std::ostream&, const Expression&) -> std::ostream&;
+
+inline auto eval(const Expression& exp, const Env& env) -> bool
+{
+    return BoolOrNone{exp.eval(env)}==BN_TRUE;
+}
+
+inline auto operator<<(std::ostream& o, const Expression& e) -> std::ostream&
+{
+    e.repr(o);
+    return o;
+}
+
 }
 
 #endif

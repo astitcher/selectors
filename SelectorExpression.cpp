@@ -135,6 +135,20 @@ auto inline operator<<(ostream& o, const T& t) -> enable_if_t<has_repr_v<T>, ost
 
 ////////////////////////////////////////////////////
 
+class ValueExpression {
+public:
+  virtual ~ValueExpression() noexcept = default;
+  virtual auto repr(ostream&) const -> void = 0;
+  virtual auto eval(const vector<Value>&) const -> Value = 0;
+  auto eval_bool(const vector<Value>& vals) const -> BoolOrNone  {
+    return eval(vals);
+  }
+};
+
+template <> struct has_repr<ValueExpression> {static constexpr bool value = true;};
+
+////////////////////////////////////////////////////
+
 // Operators
 
 using CompFn = auto (Value, Value) -> bool;
@@ -153,10 +167,10 @@ public:
         o << repr_;
     }
 
-    auto eval(Expression& e1, Expression& e2, const Env& env) const -> BoolOrNone {
-        const Value v1(e1.eval(env));
+    auto eval(ValueExpression& e1, ValueExpression& e2, const vector<Value>& vals) const -> BoolOrNone {
+        const Value v1(e1.eval(vals));
         if (!unknown(v1)) {
-          const Value v2(e2.eval(env));
+          const Value v2(e2.eval(vals));
           if (!unknown(v2)) {
             return BoolOrNone(fn_(v1, v2));
           }
@@ -183,8 +197,8 @@ public:
         o << repr_;
     }
 
-    auto eval(Expression& e, const Env& env) const -> BoolOrNone {
-        return fn_(e.eval(env));
+    auto eval(ValueExpression& e, const vector<Value>& vals) const -> BoolOrNone {
+        return fn_(e.eval(vals));
     }
 };
 
@@ -206,8 +220,8 @@ public:
         o << repr_;
     }
 
-    auto eval(Expression& e1, Expression& e2, const Env& env) const -> Value {
-        return fn_(e1.eval(env), e2.eval(env));
+    auto eval(ValueExpression& e1, ValueExpression& e2, const vector<Value>& vals) const -> Value {
+        return fn_(e1.eval(vals), e2.eval(vals));
     }
 };
 
@@ -229,8 +243,8 @@ public:
         o << repr_;
     }
 
-    auto eval(Expression& e, const Env& env) const -> Value {
-        return fn_(e.eval(env));
+    auto eval(ValueExpression& e, const vector<Value>& vals) const -> Value {
+        return fn_(e.eval(vals));
     }
 };
 
@@ -266,13 +280,34 @@ constexpr auto negate = UnaryArithmeticOperator{"-", operator-};
 
 Expression::~Expression() noexcept = default;
 
-class ValueExpression : public Expression {
+class ParsedExpression : public Expression {
+  unique_ptr<ValueExpression> e;
+  vector<string> ids;
+
 public:
-  ~ValueExpression() noexcept override = default;
-  auto repr(ostream&) const -> void override = 0;
-  auto eval(const Env&) const -> Value override = 0;
-  auto eval_bool(const Env& env) const -> BoolOrNone override{
-    return eval(env);
+  ParsedExpression(unique_ptr<ValueExpression> e_) :
+    e(std::move(e_))
+  {}
+
+  auto identifiers(vector<string>&& idents) -> void {
+    ids = std::move(idents);
+  }
+
+  ~ParsedExpression() noexcept override = default;
+  auto repr(ostream& o) const -> void override final{
+    o << *e;
+    for (std::size_t i = 0; i<ids.size(); ++i){
+      o << (i==0 ? " [" : "")
+        << i << ":" << ids[i]
+        << (i<ids.size()-1 ? ", " : "]");
+    }
+  }
+  auto eval(const Env& env) const -> Value override final {
+    vector<Value> values(ids.size());
+    for (std::size_t i = 0; i<ids.size(); ++i){
+      values[i] = env.value(ids[i]);
+    }
+    return e->eval(values);
   }
 };
 
@@ -280,9 +315,9 @@ class BoolExpression : public ValueExpression {
 public:
   ~BoolExpression() noexcept override = default;
   auto repr(ostream&) const -> void override = 0;
-  auto eval_bool(const Env&) const -> BoolOrNone override = 0;
-  auto eval(const Env& env) const -> Value override {
-    return eval_bool(env);
+  virtual auto eval_bool(const vector<Value>&) const -> BoolOrNone = 0;
+  auto eval(const vector<Value>& vals) const -> Value override {
+    return eval_bool(vals);
   }
 };
 
@@ -304,8 +339,8 @@ public:
         os << "(" << *e1 << op << *e2 << ")";
     }
 
-    auto eval_bool(const Env& env) const -> BoolOrNone override final {
-        return op.eval(*e1, *e2, env);
+    auto eval_bool(const vector<Value>& vals) const -> BoolOrNone override final {
+        return op.eval(*e1, *e2, vals);
     }
 };
 
@@ -323,10 +358,10 @@ public:
         os << "(" << *e1 << " OR " << *e2 << ")";
     }
 
-    auto eval_bool(const Env& env) const -> BoolOrNone override final {
-        BoolOrNone bn1(e1->eval_bool(env));
+    auto eval_bool(const vector<Value>& vals) const -> BoolOrNone override final {
+        BoolOrNone bn1(e1->eval_bool(vals));
         if (bn1==BN_TRUE) return BN_TRUE;
-        BoolOrNone bn2(e2->eval_bool(env));
+        BoolOrNone bn2(e2->eval_bool(vals));
         if (bn2==BN_TRUE) return BN_TRUE;
         if (bn1==BN_FALSE && bn2==BN_FALSE) return BN_FALSE;
         else return BN_UNKNOWN;
@@ -347,10 +382,10 @@ public:
         os << "(" << *e1 << " AND " << *e2 << ")";
     }
 
-    auto eval_bool(const Env& env) const -> BoolOrNone override final {
-        BoolOrNone bn1(e1->eval_bool(env));
+    auto eval_bool(const vector<Value>& vals) const -> BoolOrNone override final {
+        BoolOrNone bn1(e1->eval_bool(vals));
         if (bn1==BN_FALSE) return BN_FALSE;
-        BoolOrNone bn2(e2->eval_bool(env));
+        BoolOrNone bn2(e2->eval_bool(vals));
         if (bn2==BN_FALSE) return BN_FALSE;
         if (bn1==BN_TRUE && bn2==BN_TRUE) return BN_TRUE;
         else return BN_UNKNOWN;
@@ -371,8 +406,8 @@ public:
         os << op << "(" << *e1 << ")";
     }
 
-    auto eval_bool(const Env& env) const -> BoolOrNone override final {
-        return op.eval(*e1, env);
+    auto eval_bool(const vector<Value>& vals) const -> BoolOrNone override final {
+        return op.eval(*e1, vals);
     }
 };
 
@@ -454,8 +489,8 @@ public:
         os << *e << " REGEX_MATCH '" << reString << "'";
     }
 
-    auto eval_bool(const Env& env) const -> BoolOrNone override final {
-        Value v(e->eval(env));
+    auto eval_bool(const vector<Value>& vals) const -> BoolOrNone override final {
+        Value v(e->eval(vals));
         if ( v.type()!=Value::T_STRING ) return BN_UNKNOWN;
         auto sv = std::get<string_view>(v.value);
         return BoolOrNone(std::regex_match(sv.cbegin(), sv.cend(), regexBuffer));
@@ -478,10 +513,10 @@ public:
         os << *e << " BETWEEN " << *l << " AND " << *u;
     }
 
-    auto eval_bool(const Env& env) const -> BoolOrNone override final {
-        Value ve(e->eval(env));
-        Value vl(l->eval(env));
-        Value vu(u->eval(env));
+    auto eval_bool(const vector<Value>& vals) const -> BoolOrNone override final {
+        Value ve(e->eval(vals));
+        Value vl(l->eval(vals));
+        Value vu(u->eval(vals));
         if (unknown(ve) || unknown(vl) || unknown(vu)) return BN_UNKNOWN;
         return BoolOrNone(ve>=vl && ve<=vu);
     }
@@ -504,12 +539,12 @@ public:
         }
     }
 
-    auto eval_bool(const Env& env) const -> BoolOrNone override final {
-        Value ve(e->eval(env));
+    auto eval_bool(const vector<Value>& vals) const -> BoolOrNone override final {
+        Value ve(e->eval(vals));
         if (unknown(ve)) return BN_UNKNOWN;
         BoolOrNone r = BN_FALSE;
         for (auto& le : l){
-            Value li(le->eval(env));
+            Value li(le->eval(vals));
             if (unknown(li)) {
                 r = BN_UNKNOWN;
                 continue;
@@ -537,12 +572,12 @@ public:
         }
     }
 
-    auto eval_bool(const Env& env) const -> BoolOrNone override final {
-        Value ve(e->eval(env));
+    auto eval_bool(const vector<Value>& vals) const -> BoolOrNone override final {
+        Value ve(e->eval(vals));
         if (unknown(ve)) return BN_UNKNOWN;
         BoolOrNone r = BN_TRUE;
         for (auto& le : l){
-            Value li(le->eval(env));
+            Value li(le->eval(vals));
             if (unknown(li)) {
                 r = BN_UNKNOWN;
                 continue;
@@ -580,8 +615,8 @@ public:
         os << "(" << *e1 << op << *e2 << ")";
     }
 
-    auto eval(const Env& env) const -> Value override final {
-        return op.eval(*e1, *e2, env);
+    auto eval(const vector<Value>& vals) const -> Value override final {
+        return op.eval(*e1, *e2, vals);
     }
 };
 
@@ -599,8 +634,8 @@ public:
         os << op << "(" << *e1 << ")";
     }
 
-    auto eval(const Env& env) const -> Value override final {
-        return op.eval(*e1, env);
+    auto eval(const vector<Value>& vals) const -> Value override final {
+        return op.eval(*e1, vals);
     }
 };
 
@@ -619,7 +654,7 @@ public:
         os << value;
     }
 
-    auto eval(const Env&) const -> Value override final {
+    auto eval(const vector<Value>&) const -> Value override final {
         return value;
     }
 };
@@ -636,31 +671,38 @@ public:
         os << "'" << value << "'";
     }
 
-    auto eval(const Env&) const -> Value override final {
+    auto eval(const vector<Value>&) const -> Value override final {
         return string_view{value};
     }
 };
 
 class Identifier : public ValueExpression {
-    string identifier;
+    size_t index;
 
 public:
-    Identifier(const string& i) :
-        identifier(i)
+    Identifier(size_t i) :
+      index(i)
     {}
 
     auto repr(ostream& os) const -> void override final {
-        os << "I:" << identifier;
+        os << "I:" << index;
     }
 
-    auto eval(const Env& env) const -> Value override final {
-        return env.value(identifier);
+    auto eval(const vector<Value>& vals) const -> Value override final {
+        return vals[index];
     }
 };
 
 ////////////////////////////////////////////////////
 
 struct Parse {
+
+    Tokeniser& tokeniser;
+    std::map<std::string, std::size_t> identifierMap;
+
+    Parse(Tokeniser& t) :
+        tokeniser(t)
+    {}
 
 [[noreturn]]
 static inline
@@ -673,43 +715,46 @@ auto throwParseError(const Token& token, const string& msg) -> void {
 }
 
 [[noreturn]]
-static inline
-auto throwParseError(Tokeniser& tokeniser, const string& msg) -> void {
+inline
+auto throwParseError(const string& msg) -> void {
     tokeniser.returnTokens();
     throwParseError(tokeniser.nextToken(), msg);
 }
 
-static
-auto selectorExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
+auto selectorExpression() -> unique_ptr<ParsedExpression>
 {
     if ( tokeniser.nextToken().type==T_EOS ) {
-        return make_unique<Literal>(true);
+        return make_unique<ParsedExpression>(std::move(make_unique<Literal>(Literal{true})));
     }
     tokeniser.returnTokens();
-    auto e = orExpression(tokeniser);
+    auto e = orExpression();
     if (tokeniser.nextToken().type != T_EOS) {
-      throwParseError(tokeniser, "extra input");
+      throwParseError("extra input");
     }
-    return e;
+    vector<string> identifiers(identifierMap.size());
+    for (auto& [name, index] : identifierMap) {
+        identifiers[index] = name;
+    }
+    auto se = make_unique<ParsedExpression>(std::move(e));
+    se->identifiers(std::move(identifiers));
+    return se;
 }
 
-static
-auto orExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
+auto orExpression() -> unique_ptr<ValueExpression>
 {
-    auto e = andExpression(tokeniser);
+    auto e = andExpression();
     while ( tokeniser.nextToken().type==T_OR ) {
-        e = make_unique<OrExpression>(std::move(e), andExpression(tokeniser));
+        e = make_unique<OrExpression>(std::move(e), andExpression());
     }
     tokeniser.returnTokens();
     return e;
 }
 
-static
-auto andExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
+auto andExpression() -> unique_ptr<ValueExpression>
 {
-    auto e = comparisonExpression(tokeniser);
+    auto e = comparisonExpression();
     while ( tokeniser.nextToken().type==T_AND ) {
-        e = make_unique<AndExpression>(std::move(e), comparisonExpression(tokeniser));
+        e = make_unique<AndExpression>(std::move(e), comparisonExpression());
     }
     tokeniser.returnTokens();
     return e;
@@ -721,26 +766,25 @@ auto conditionalNegate(bool negated, unique_ptr<BoolExpression> e) -> unique_ptr
     return negated ? make_unique<UnaryBooleanExpression>(notOp, std::move(e)) : std::move(e);
 }
 
-static
-auto specialComparisons(Tokeniser& tokeniser, unique_ptr<ValueExpression> e1, bool negated = false)  -> unique_ptr<BoolExpression>
+auto specialComparisons(unique_ptr<ValueExpression> e1, bool negated = false)  -> unique_ptr<BoolExpression>
 {
     switch (tokeniser.nextToken().type) {
     case T_LIKE: {
         auto t = tokeniser.nextToken();
         if ( t.type!=T_STRING ) {
-            throwParseError(tokeniser, "expected string after LIKE");
+            throwParseError("expected string after LIKE");
         }
         // Check for "ESCAPE"
         if ( tokeniser.nextToken().type==T_ESCAPE ) {
             auto e = tokeniser.nextToken();
             if ( e.type!=T_STRING ) {
-                throwParseError(tokeniser, "expected string after ESCAPE");
+                throwParseError("expected string after ESCAPE");
             }
             if (e.val.size()>1) {
-                throwParseError(tokeniser, "single character string required after ESCAPE");
+                throwParseError("single character string required after ESCAPE");
             }
             if (e.val=="%" || e.val=="_") {
-                throwParseError(tokeniser, "'%' and '_' are not allowed as ESCAPE characters");
+                throwParseError("'%' and '_' are not allowed as ESCAPE characters");
             }
             return conditionalNegate(negated, make_unique<LikeExpression>(std::move(e1), t.val, e.val));
         } else {
@@ -749,41 +793,40 @@ auto specialComparisons(Tokeniser& tokeniser, unique_ptr<ValueExpression> e1, bo
         }
     }
     case T_BETWEEN: {
-        auto lower = addExpression(tokeniser);
+        auto lower = addExpression();
         if ( tokeniser.nextToken().type!=T_AND ) {
-            throwParseError(tokeniser, "expected AND after BETWEEN");
+            throwParseError("expected AND after BETWEEN");
         }
-        return conditionalNegate(negated, make_unique<BetweenExpression>(std::move(e1), std::move(lower), addExpression(tokeniser)));
+        return conditionalNegate(negated, make_unique<BetweenExpression>(std::move(e1), std::move(lower), addExpression()));
     }
     case T_IN: {
         if ( tokeniser.nextToken().type!=T_LPAREN ) {
-            throwParseError(tokeniser, "missing '(' after IN");
+            throwParseError("missing '(' after IN");
         }
         vector<unique_ptr<ValueExpression>> list;
         do {
-            list.push_back(addExpression(tokeniser));
+            list.push_back(addExpression());
         } while (tokeniser.nextToken().type==T_COMMA);
         tokeniser.returnTokens();
         if ( tokeniser.nextToken().type!=T_RPAREN ) {
-            throwParseError(tokeniser, "missing ',' or ')' after IN");
+            throwParseError("missing ',' or ')' after IN");
         }
         if (negated) return make_unique<NotInExpression>(std::move(e1), std::move(list));
         else return make_unique<InExpression>(std::move(e1), std::move(list));
     }
     default:
-        throwParseError(tokeniser, "expected LIKE, IN or BETWEEN");
+        throwParseError("expected LIKE, IN or BETWEEN");
     }
 }
 
-static
-auto comparisonExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
+auto comparisonExpression() -> unique_ptr<ValueExpression>
 {
     if ( tokeniser.nextToken().type==T_NOT ) {
-        return make_unique<UnaryBooleanExpression>(notOp, comparisonExpression(tokeniser));
+        return make_unique<UnaryBooleanExpression>(notOp, comparisonExpression());
     }
 
     tokeniser.returnTokens();
-    auto e1 = addExpression(tokeniser);
+    auto e1 = addExpression();
 
     const ComparisonOperator* op;
     switch (tokeniser.nextToken().type) {
@@ -797,15 +840,15 @@ auto comparisonExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
             if ( tokeniser.nextToken().type == T_NULL)
                 return make_unique<UnaryBooleanExpression>(isNonNullOp, std::move(e1));
         default:
-            throwParseError(tokeniser, "expected NULL or NOT NULL after IS");
+            throwParseError("expected NULL or NOT NULL after IS");
         }
     case T_NOT:
-        return specialComparisons(tokeniser, std::move(e1), true);
+        return specialComparisons(std::move(e1), true);
     case T_BETWEEN:
     case T_LIKE:
     case T_IN:
         tokeniser.returnTokens();
-        return specialComparisons(tokeniser, std::move(e1));
+        return specialComparisons(std::move(e1));
     case T_EQUAL: op = &eqOp; break;
     case T_NEQ:   op = &neqOp; break;
     case T_LESS:  op = &lsOp; break;
@@ -816,18 +859,17 @@ auto comparisonExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
         tokeniser.returnTokens();
         return e1;
     }
-    return make_unique<ComparisonExpression>(*op, std::move(e1), addExpression(tokeniser));
+    return make_unique<ComparisonExpression>(*op, std::move(e1), addExpression());
 }
 
-static
-auto addExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
+auto addExpression() -> unique_ptr<ValueExpression>
 {
-    auto e = multiplyExpression(tokeniser);
+    auto e = multiplyExpression();
 
     auto t = tokeniser.nextToken();
     while (t.type==T_PLUS || t.type==T_MINUS ) {
         const ArithmeticOperator& op = t.type==T_PLUS ? add : sub;
-        e = make_unique<ArithmeticExpression>(op, std::move(e), multiplyExpression(tokeniser));
+        e = make_unique<ArithmeticExpression>(op, std::move(e), multiplyExpression());
         t = tokeniser.nextToken();
     }
 
@@ -835,15 +877,14 @@ auto addExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
     return e;
 }
 
-static
-auto multiplyExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
+auto multiplyExpression() -> unique_ptr<ValueExpression>
 {
-    auto e = unaryArithExpression(tokeniser);
+    auto e = unaryArithExpression();
 
     auto t = tokeniser.nextToken();
     while (t.type==T_MULT || t.type==T_DIV ) {
         const ArithmeticOperator& op = t.type==T_MULT ? mult : div;
-        e = make_unique<ArithmeticExpression>(op, std::move(e), unaryArithExpression(tokeniser));
+        e = make_unique<ArithmeticExpression>(op, std::move(e), unaryArithExpression());
         t = tokeniser.nextToken();
     }
 
@@ -887,14 +928,13 @@ auto approxNumeric(const Token& token) -> unique_ptr<ValueExpression>
     throwParseError(token, "floating literal overflow/underflow");
 }
 
-static
-auto unaryArithExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
+auto unaryArithExpression() -> unique_ptr<ValueExpression>
 {
     switch (tokeniser.nextToken().type) {
     case T_LPAREN: {
-        auto e = orExpression(tokeniser);
+        auto e = orExpression();
         if ( tokeniser.nextToken().type!=T_RPAREN ) {
-            throwParseError(tokeniser, "missing ')' after '('");
+            throwParseError("missing ')' after '('");
         }
         return e;
     }
@@ -907,7 +947,7 @@ auto unaryArithExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
             return exactNumeric(t, true);
         } else {
             tokeniser.returnTokens();
-            return make_unique<UnaryArithExpression>(negate, unaryArithExpression(tokeniser));
+            return make_unique<UnaryArithExpression>(negate, unaryArithExpression());
         }
     }
     default:
@@ -915,16 +955,22 @@ auto unaryArithExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
         break;
     }
 
-    return primaryExpression(tokeniser);
+    return primaryExpression();
 }
 
-static
-auto primaryExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
+auto primaryExpression() -> unique_ptr<ValueExpression>
 {
     auto t = tokeniser.nextToken();
     switch (t.type) {
-        case T_IDENTIFIER:
-            return make_unique<Identifier>(t.val);
+        case T_IDENTIFIER: {
+            auto it = identifierMap.find(t.val);
+            if (it==identifierMap.end()) {
+                identifierMap[t.val] = identifierMap.size();
+                it = identifierMap.find(t.val);
+            }
+            auto& [name, index] = *it;
+            return make_unique<Identifier>(index);
+        }
         case T_STRING:
             return make_unique<StringLiteral>(t.val);
         case T_FALSE:
@@ -936,7 +982,7 @@ auto primaryExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
         case T_NUMERIC_APPROX:
             return approxNumeric(t);
         default:
-            throwParseError(tokeniser, "expected literal or identifier");
+            throwParseError("expected literal or identifier");
     }
 }
 
@@ -948,18 +994,9 @@ auto primaryExpression(Tokeniser& tokeniser) -> unique_ptr<ValueExpression>
 auto make_selector(string_view exp) -> unique_ptr<Expression>
 {
     auto tokeniser = Tokeniser{exp};
-    return Parse::selectorExpression(tokeniser);
-}
-
-auto eval(const Expression& exp, const Env& env) -> bool
-{
-    return exp.eval_bool(env)==BN_TRUE;
-}
-
-auto operator<<(std::ostream& o, const Expression& e) -> std::ostream&
-{
-    e.repr(o);
-    return o;
+    auto parse = Parse(tokeniser);
+    auto e = parse.selectorExpression();
+    return e;
 }
 
 }
