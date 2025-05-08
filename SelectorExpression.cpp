@@ -24,6 +24,8 @@
 #include "selectors.h"
 
 #include "SelectorEnv.h"
+#include "SelectorInternal.h"
+#include "SelectorOperators.h"
 #include "SelectorToken.h"
 #include "SelectorValue.h"
 
@@ -41,6 +43,8 @@
 
 using std::enable_if_t;
 using std::make_unique;
+using std::map;
+using std::move;
 using std::ostream;
 using std::string;
 using std::string_view;
@@ -118,182 +122,25 @@ using std::vector;
 
 namespace selector {
 
-// Define operator<< for classes that have repr()
-// need to define type trait has_repr for those clases
-template<class T>
-struct has_repr{static constexpr bool value = false;};
-
-template<class T>
-inline constexpr bool has_repr_v = has_repr<T>::value;
-
-template <class T>
-auto inline operator<<(ostream& o, const T& t) -> enable_if_t<has_repr_v<T>, ostream&>
-{
-    t.repr(o);
-    return o;
-}
-
-////////////////////////////////////////////////////
-
-class ValueExpression {
-public:
-  virtual ~ValueExpression() noexcept = default;
-  virtual auto repr(ostream&) const -> void = 0;
-  virtual auto eval(const vector<Value>&) const -> Value = 0;
-  auto eval_bool(const vector<Value>& vals) const -> BoolOrNone  {
-    return eval(vals);
-  }
-};
-
-template <> struct has_repr<ValueExpression> {static constexpr bool value = true;};
-
-////////////////////////////////////////////////////
-
-// Operators
-
-using CompFn = auto (Value, Value) -> bool;
-
-class ComparisonOperator {
-    const char* repr_;
-    CompFn& fn_;
-
-public:
-    constexpr ComparisonOperator(const char* r, CompFn* fn) :
-        repr_(r),
-        fn_(*fn)
-    {}
-
-    auto repr(ostream& o) const -> void {
-        o << repr_;
-    }
-
-    auto eval(ValueExpression& e1, ValueExpression& e2, const vector<Value>& vals) const -> BoolOrNone {
-        const Value v1(e1.eval(vals));
-        if (!unknown(v1)) {
-          const Value v2(e2.eval(vals));
-          if (!unknown(v2)) {
-            return BoolOrNone(fn_(v1, v2));
-          }
-        }
-        return BN_UNKNOWN;
-    }
-};
-
-template <> struct has_repr<ComparisonOperator> {static constexpr bool value = true;};
-
-using UBoolFn = auto (const Value&) -> BoolOrNone;
-
-class UnaryBooleanOperator {
-    const char* repr_;
-    UBoolFn& fn_;
-
-public:
-    constexpr UnaryBooleanOperator(const char* r, UBoolFn* fn) :
-        repr_(r),
-        fn_(*fn)
-    {}
-
-    auto repr(ostream& o) const -> void {
-        o << repr_;
-    }
-
-    auto eval(ValueExpression& e, const vector<Value>& vals) const -> BoolOrNone {
-        return fn_(e.eval(vals));
-    }
-};
-
-template <> struct has_repr<UnaryBooleanOperator> {static constexpr bool value = true;};
-
-using ArithFn = auto (Value, Value) -> Value;
-
-class ArithmeticOperator {
-    const char* repr_;
-    ArithFn& fn_;
-
-public:
-    constexpr ArithmeticOperator(const char* r, ArithFn* fn) :
-        repr_(r),
-        fn_(*fn)
-    {}
-
-    auto repr(ostream& o) const -> void {
-        o << repr_;
-    }
-
-    auto eval(ValueExpression& e1, ValueExpression& e2, const vector<Value>& vals) const -> Value {
-        return fn_(e1.eval(vals), e2.eval(vals));
-    }
-};
-
-using UArithFn = auto (const Value&) -> Value;
-
-template <> struct has_repr<ArithmeticOperator> {static constexpr bool value = true;};
-
-class UnaryArithmeticOperator {
-    const char* repr_;
-    UArithFn& fn_;
-
-public:
-    constexpr UnaryArithmeticOperator(const char* r, UArithFn* fn) :
-        repr_(r),
-        fn_(*fn)
-    {}
-
-    auto repr(ostream& o) const -> void {
-        o << repr_;
-    }
-
-    auto eval(ValueExpression& e, const vector<Value>& vals) const -> Value {
-        return fn_(e.eval(vals));
-    }
-};
-
-template <> struct has_repr<UnaryArithmeticOperator> {static constexpr bool value = true;};
-
-////////////////////////////////////////////////////
-
-// Some operators...
-
-constexpr auto eqOp   = ComparisonOperator{"==", operator==};
-constexpr auto neqOp  = ComparisonOperator{"!=", operator!=};
-constexpr auto lsOp   = ComparisonOperator{"<",  operator<};
-constexpr auto grOp   = ComparisonOperator{">",  operator>};
-constexpr auto lseqOp = ComparisonOperator{"<=", operator<=};
-constexpr auto greqOp = ComparisonOperator{">=", operator>=};
-
-constexpr auto isNullOp    = UnaryBooleanOperator{"IsNull",
-    [](const Value& v){return BoolOrNone(unknown(v));}};
-constexpr auto isNonNullOp = UnaryBooleanOperator{"IsNonNull",
-    [](const Value& v){return BoolOrNone(!unknown(v));}};
-constexpr auto notOp       = UnaryBooleanOperator{"NOT", operator!};
-
-constexpr auto add  = ArithmeticOperator{"+", operator+};
-constexpr auto sub  = ArithmeticOperator{"-", operator-};
-constexpr auto mult = ArithmeticOperator{"*", operator*};
-constexpr auto div  = ArithmeticOperator{"/", operator/};
-
-constexpr auto negate = UnaryArithmeticOperator{"-", operator-};
-
-////////////////////////////////////////////////////
-
 // Expressions...
 
-Expression::~Expression() noexcept = default;
+Selector::~Selector() noexcept = default;
 
-class ParsedExpression : public Expression {
+class ParsedExpression : public Selector {
   unique_ptr<ValueExpression> e;
   vector<string> ids;
 
 public:
   ParsedExpression(unique_ptr<ValueExpression> e_) :
-    e(std::move(e_))
+    e(move(e_))
   {}
 
   auto identifiers(vector<string>&& idents) -> void {
-    ids = std::move(idents);
+    ids = move(idents);
   }
 
   ~ParsedExpression() noexcept override = default;
+
   auto repr(ostream& o) const -> void override final{
     o << *e;
     for (std::size_t i = 0; i<ids.size(); ++i){
@@ -302,6 +149,7 @@ public:
         << (i<ids.size()-1 ? ", " : "]");
     }
   }
+
   auto eval(const Env& env) const -> Value override final {
     vector<Value> values(ids.size());
     for (std::size_t i = 0; i<ids.size(); ++i){
@@ -331,8 +179,8 @@ class ComparisonExpression : public BoolExpression {
 public:
     ComparisonExpression(const ComparisonOperator& o, unique_ptr<ValueExpression> e, unique_ptr<ValueExpression> e_):
         op(o),
-        e1(std::move(e)),
-        e2(std::move(e_))
+        e1(move(e)),
+        e2(move(e_))
     {}
 
     auto repr(ostream& os) const -> void override final {
@@ -350,8 +198,8 @@ class OrExpression : public BoolExpression {
 
 public:
     OrExpression(unique_ptr<ValueExpression> e, unique_ptr<ValueExpression> e_):
-        e1(std::move(e)),
-        e2(std::move(e_))
+        e1(move(e)),
+        e2(move(e_))
     {}
 
     auto repr(ostream& os) const -> void override final {
@@ -374,8 +222,8 @@ class AndExpression : public BoolExpression {
 
 public:
     AndExpression(unique_ptr<ValueExpression> e, unique_ptr<ValueExpression> e_):
-        e1(std::move(e)),
-        e2(std::move(e_))
+        e1(move(e)),
+        e2(move(e_))
     {}
 
     auto repr(ostream& os) const -> void override final {
@@ -399,7 +247,7 @@ class UnaryBooleanExpression : public BoolExpression {
 public:
     UnaryBooleanExpression(const UnaryBooleanOperator& o, unique_ptr<ValueExpression> e) :
         op(o),
-        e1(std::move(e))
+        e1(move(e))
     {}
 
     auto repr(ostream& os) const -> void override final {
@@ -475,7 +323,7 @@ class LikeExpression : public BoolExpression {
 public:
     LikeExpression(unique_ptr<ValueExpression> e_, const string& like, const string& escape="")
     try :
-        e(std::move(e_)),
+        e(move(e_)),
         reString(toRegex(like, escape)),
         regexBuffer(reString, std::regex::basic)
     {}
@@ -504,9 +352,9 @@ class BetweenExpression : public BoolExpression {
 
 public:
     BetweenExpression(unique_ptr<ValueExpression> e_, unique_ptr<ValueExpression> l_, unique_ptr<ValueExpression> u_) :
-        e(std::move(e_)),
-        l(std::move(l_)),
-        u(std::move(u_))
+        e(move(e_)),
+        l(move(l_)),
+        u(move(u_))
     {}
 
     auto repr(ostream& os) const -> void override final {
@@ -528,8 +376,8 @@ class InExpression : public BoolExpression {
 
 public:
     InExpression(unique_ptr<ValueExpression> e_, vector<unique_ptr<ValueExpression>>&& l_) :
-        e(std::move(e_)),
-        l(std::move(l_))
+        e(move(e_)),
+        l(move(l_))
     {}
 
     auto repr(ostream& os) const -> void override final {
@@ -561,8 +409,8 @@ class NotInExpression : public BoolExpression {
 
 public:
     NotInExpression(unique_ptr<ValueExpression> e_, vector<unique_ptr<ValueExpression>>&& l_) :
-        e(std::move(e_)),
-        l(std::move(l_))
+        e(move(e_)),
+        l(move(l_))
     {}
 
     auto repr(ostream& os) const -> void override final {
@@ -607,8 +455,8 @@ class ArithmeticExpression : public ValueExpression {
 public:
     ArithmeticExpression(const ArithmeticOperator& o, unique_ptr<ValueExpression> e, unique_ptr<ValueExpression> e_):
         op(o),
-        e1(std::move(e)),
-        e2(std::move(e_))
+        e1(move(e)),
+        e2(move(e_))
     {}
 
     auto repr(ostream& os) const -> void override final{
@@ -627,7 +475,7 @@ class UnaryArithExpression : public ValueExpression {
 public:
     UnaryArithExpression(const UnaryArithmeticOperator& o, unique_ptr<ValueExpression> e) :
         op(o),
-        e1(std::move(e))
+        e1(move(e))
     {}
 
     auto repr(ostream& os) const -> void override final {
@@ -698,7 +546,7 @@ public:
 struct Parse {
 
     Tokeniser& tokeniser;
-    std::map<std::string, std::size_t> identifierMap;
+    map<string, std::size_t> identifierMap;
 
     Parse(Tokeniser& t) :
         tokeniser(t)
@@ -724,7 +572,7 @@ auto throwParseError(const string& msg) -> void {
 auto selectorExpression() -> unique_ptr<ParsedExpression>
 {
     if ( tokeniser.nextToken().type==T_EOS ) {
-        return make_unique<ParsedExpression>(std::move(make_unique<Literal>(Literal{true})));
+        return make_unique<ParsedExpression>(move(make_unique<Literal>(Literal{true})));
     }
     tokeniser.returnTokens();
     auto e = orExpression();
@@ -735,8 +583,8 @@ auto selectorExpression() -> unique_ptr<ParsedExpression>
     for (auto& [name, index] : identifierMap) {
         identifiers[index] = name;
     }
-    auto se = make_unique<ParsedExpression>(std::move(e));
-    se->identifiers(std::move(identifiers));
+    auto se = make_unique<ParsedExpression>(move(e));
+    se->identifiers(move(identifiers));
     return se;
 }
 
@@ -744,7 +592,7 @@ auto orExpression() -> unique_ptr<ValueExpression>
 {
     auto e = andExpression();
     while ( tokeniser.nextToken().type==T_OR ) {
-        e = make_unique<OrExpression>(std::move(e), andExpression());
+        e = make_unique<OrExpression>(move(e), andExpression());
     }
     tokeniser.returnTokens();
     return e;
@@ -754,7 +602,7 @@ auto andExpression() -> unique_ptr<ValueExpression>
 {
     auto e = comparisonExpression();
     while ( tokeniser.nextToken().type==T_AND ) {
-        e = make_unique<AndExpression>(std::move(e), comparisonExpression());
+        e = make_unique<AndExpression>(move(e), comparisonExpression());
     }
     tokeniser.returnTokens();
     return e;
@@ -763,7 +611,7 @@ auto andExpression() -> unique_ptr<ValueExpression>
 static
 auto conditionalNegate(bool negated, unique_ptr<BoolExpression> e) -> unique_ptr<BoolExpression>
 {
-    return negated ? make_unique<UnaryBooleanExpression>(notOp, std::move(e)) : std::move(e);
+    return negated ? make_unique<UnaryBooleanExpression>(notOp, move(e)) : move(e);
 }
 
 auto specialComparisons(unique_ptr<ValueExpression> e1, bool negated = false)  -> unique_ptr<BoolExpression>
@@ -786,10 +634,10 @@ auto specialComparisons(unique_ptr<ValueExpression> e1, bool negated = false)  -
             if (e.val=="%" || e.val=="_") {
                 throwParseError("'%' and '_' are not allowed as ESCAPE characters");
             }
-            return conditionalNegate(negated, make_unique<LikeExpression>(std::move(e1), t.val, e.val));
+            return conditionalNegate(negated, make_unique<LikeExpression>(move(e1), t.val, e.val));
         } else {
             tokeniser.returnTokens();
-            return conditionalNegate(negated, make_unique<LikeExpression>(std::move(e1), t.val));
+            return conditionalNegate(negated, make_unique<LikeExpression>(move(e1), t.val));
         }
     }
     case T_BETWEEN: {
@@ -797,7 +645,7 @@ auto specialComparisons(unique_ptr<ValueExpression> e1, bool negated = false)  -
         if ( tokeniser.nextToken().type!=T_AND ) {
             throwParseError("expected AND after BETWEEN");
         }
-        return conditionalNegate(negated, make_unique<BetweenExpression>(std::move(e1), std::move(lower), addExpression()));
+        return conditionalNegate(negated, make_unique<BetweenExpression>(move(e1), move(lower), addExpression()));
     }
     case T_IN: {
         if ( tokeniser.nextToken().type!=T_LPAREN ) {
@@ -811,8 +659,8 @@ auto specialComparisons(unique_ptr<ValueExpression> e1, bool negated = false)  -
         if ( tokeniser.nextToken().type!=T_RPAREN ) {
             throwParseError("missing ',' or ')' after IN");
         }
-        if (negated) return make_unique<NotInExpression>(std::move(e1), std::move(list));
-        else return make_unique<InExpression>(std::move(e1), std::move(list));
+        if (negated) return make_unique<NotInExpression>(move(e1), move(list));
+        else return make_unique<InExpression>(move(e1), move(list));
     }
     default:
         throwParseError("expected LIKE, IN or BETWEEN");
@@ -835,20 +683,20 @@ auto comparisonExpression() -> unique_ptr<ValueExpression>
         // The rest must be T_NULL or T_NOT, T_NULL
         switch (tokeniser.nextToken().type) {
         case T_NULL:
-            return make_unique<UnaryBooleanExpression>(isNullOp, std::move(e1));
+            return make_unique<UnaryBooleanExpression>(isNullOp, move(e1));
         case T_NOT:
             if ( tokeniser.nextToken().type == T_NULL)
-                return make_unique<UnaryBooleanExpression>(isNonNullOp, std::move(e1));
+                return make_unique<UnaryBooleanExpression>(isNonNullOp, move(e1));
         default:
             throwParseError("expected NULL or NOT NULL after IS");
         }
     case T_NOT:
-        return specialComparisons(std::move(e1), true);
+        return specialComparisons(move(e1), true);
     case T_BETWEEN:
     case T_LIKE:
     case T_IN:
         tokeniser.returnTokens();
-        return specialComparisons(std::move(e1));
+        return specialComparisons(move(e1));
     case T_EQUAL: op = &eqOp; break;
     case T_NEQ:   op = &neqOp; break;
     case T_LESS:  op = &lsOp; break;
@@ -859,7 +707,7 @@ auto comparisonExpression() -> unique_ptr<ValueExpression>
         tokeniser.returnTokens();
         return e1;
     }
-    return make_unique<ComparisonExpression>(*op, std::move(e1), addExpression());
+    return make_unique<ComparisonExpression>(*op, move(e1), addExpression());
 }
 
 auto addExpression() -> unique_ptr<ValueExpression>
@@ -869,7 +717,7 @@ auto addExpression() -> unique_ptr<ValueExpression>
     auto t = tokeniser.nextToken();
     while (t.type==T_PLUS || t.type==T_MINUS ) {
         const ArithmeticOperator& op = t.type==T_PLUS ? add : sub;
-        e = make_unique<ArithmeticExpression>(op, std::move(e), multiplyExpression());
+        e = make_unique<ArithmeticExpression>(op, move(e), multiplyExpression());
         t = tokeniser.nextToken();
     }
 
@@ -884,7 +732,7 @@ auto multiplyExpression() -> unique_ptr<ValueExpression>
     auto t = tokeniser.nextToken();
     while (t.type==T_MULT || t.type==T_DIV ) {
         const ArithmeticOperator& op = t.type==T_MULT ? mult : div;
-        e = make_unique<ArithmeticExpression>(op, std::move(e), unaryArithExpression());
+        e = make_unique<ArithmeticExpression>(op, move(e), unaryArithExpression());
         t = tokeniser.nextToken();
     }
 
@@ -991,7 +839,7 @@ auto primaryExpression() -> unique_ptr<ValueExpression>
 ///////////////////////////////////////////////////////////
 
 // Top level parser
-auto make_selector(string_view exp) -> unique_ptr<Expression>
+auto make_selector(string_view exp) -> unique_ptr<Selector>
 {
     auto tokeniser = Tokeniser{exp};
     auto parse = Parse(tokeniser);

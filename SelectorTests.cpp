@@ -278,7 +278,7 @@ SECTION("tokenString")
 
 }
 
-auto test_selector(const string& s) -> unique_ptr<Expression>
+auto test_selector(const string& s) -> unique_ptr<Selector>
 {
   INFO("String: " << s << " -> ");
   try {

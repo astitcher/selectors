@@ -33,7 +33,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
-add_library(selectors SHARED SelectorExpression.cpp SelectorToken.cpp SelectorValue.cpp selectors.cpp)
+add_library(selectors SHARED SelectorExpression.cpp SelectorOperators.cpp SelectorToken.cpp SelectorValue.cpp selectors.cpp)
 set_target_properties(selectors
     PROPERTIES
         INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}

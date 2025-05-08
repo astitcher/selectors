@@ -41,7 +41,7 @@ using std::unordered_set;
 
 // C interfaces
 
-struct selector_expression_t : selector::Expression {};
+struct selector_expression_t : selector::Selector {};
 
 struct selector_value_t : selector::Value {};
 
@@ -88,7 +88,7 @@ auto selector_expression_free(const selector_expression_t* exp) -> void {
 }
 
 auto selector_expression_eval(const selector_expression_t* exp, const selector_environment_t* env) -> bool {
-    return eval(*exp, *env);
+    return selector::BoolOrNone{exp->eval(*env)}==selector::BN_TRUE;
 }
 
 auto selector_expression_value(const selector_expression_t* exp, const selector_environment_t* env) -> const selector_value_t* {
@@ -97,7 +97,7 @@ auto selector_expression_value(const selector_expression_t* exp, const selector_
     return static_cast<selector_value_t*>(new selector::Value{val});
 }
 
-auto selector_expression_dump(const selector_expression_t* exp) -> void{
+auto selector_expression_dump(const selector_expression_t* exp) -> void {
     std::cerr << *exp;
 }
 

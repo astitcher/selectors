@@ -34,21 +34,21 @@ namespace selector {
 
 class Env;
 
-class Expression {
+class Selector {
 public:
-    virtual ~Expression() noexcept = 0;
+    virtual ~Selector() noexcept = 0;
     virtual auto repr(std::ostream&) const -> void = 0;
     virtual auto eval(const Env&) const -> Value = 0;
 };
 
-SELECTORS_EXPORT auto make_selector(std::string_view exp) -> std::unique_ptr<Expression>;
+SELECTORS_EXPORT auto make_selector(std::string_view exp) -> std::unique_ptr<Selector>;
 
-inline auto eval(const Expression& exp, const Env& env) -> bool
+inline auto eval(const Selector& exp, const Env& env) -> bool
 {
     return BoolOrNone{exp.eval(env)}==BN_TRUE;
 }
 
-inline auto operator<<(std::ostream& o, const Expression& e) -> std::ostream&
+inline auto operator<<(std::ostream& o, const Selector& e) -> std::ostream&
 {
     e.repr(o);
     return o;
