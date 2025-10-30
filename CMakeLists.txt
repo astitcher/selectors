@@ -73,3 +73,46 @@ if(Catch2_FOUND)
   catch_discover_tests(selector_tests)
 endif(Catch2_FOUND)
 
+add_executable(selector_regression_test
+    selector_fuzzer.cpp
+    selector_fuzzer_main.cpp)
+target_link_libraries(selector_regression_test PRIVATE selectors)
+set_target_properties(selector_regression_test
+    PROPERTIES
+        INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
+
+# Define option to enable fuzzing in an interface library
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_library(fuzzing_options INTERFACE)
+    target_compile_options(fuzzing_options INTERFACE
+        -fsanitize=fuzzer,address,undefined
+        -fno-omit-frame-pointer)
+    target_link_options(fuzzing_options INTERFACE
+        -fsanitize=fuzzer,address,undefined)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "")
+endif()
+
+# Optional fuzzing support
+option(ENABLE_FUZZER "Build with fuzzing instrumentation and create static fuzz target" OFF)
+
+# Require Clang for fuzzing builds
+if(ENABLE_FUZZER AND NOT TARGET fuzzing_options)
+    message(FATAL_ERROR "ENABLE_FUZZER requires Clang compiler. Current compiler: ${CMAKE_CXX_COMPILER_ID}")
+endif()
+
+if(ENABLE_FUZZER)
+    # Create static library with fuzzing instrumentation
+    add_library(selectors-fuzz STATIC $<TARGET_PROPERTY:selectors,SOURCES>)
+    target_link_libraries(selectors-fuzz PUBLIC fuzzing_options)
+    set_target_properties(selectors-fuzz PROPERTIES
+        INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}
+        INTERPROCEDURAL_OPTIMIZATION ON)
+
+    # Fuzzer executable - just the fuzzer entry point, no main
+    add_executable(selector_fuzzer selector_fuzzer.cpp)
+    target_link_libraries(selector_fuzzer PRIVATE selectors-fuzz)
+    set_target_properties(selector_fuzzer PROPERTIES
+        INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}
+        INTERPROCEDURAL_OPTIMIZATION ON)
+endif()
+
