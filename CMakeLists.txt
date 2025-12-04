@@ -73,3 +73,29 @@ if(Catch2_FOUND)
   catch_discover_tests(selector_tests)
 endif(Catch2_FOUND)
 
+# Google Benchmark support
+# Only enable benchmarks if Google Benchmark is found via find_package
+find_package(benchmark QUIET)
+
+if(benchmark_FOUND)
+  add_executable(selector_benchmarks SelectorBenchmarks.cpp)
+  target_link_libraries(selector_benchmarks
+    PRIVATE
+      selectors
+      benchmark::benchmark
+      benchmark::benchmark_main)
+  set_target_properties(selector_benchmarks
+    PROPERTIES
+      INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR})
+  
+  # Add custom target to run benchmarks
+  add_custom_target(run_benchmarks
+    COMMAND selector_benchmarks
+    DEPENDS selector_benchmarks
+    COMMENT "Running selector benchmarks"
+    VERBATIM
+  )
+else()
+  message(STATUS "Google Benchmark not found - benchmarks disabled")
+endif()
+
